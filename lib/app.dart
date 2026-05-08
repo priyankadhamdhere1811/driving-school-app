@@ -1,5 +1,6 @@
 // import 'package:driving_school_app/views/owner/owner_dashboard_view.dart';
-import 'package:driving_school_app/views/owner/students/student_list_view.dart';
+import 'package:driving_school_app/views/owner/students/add_student_view.dart';
+// import 'package:driving_school_app/views/owner/students/student_list_view.dart';
 import 'package:flutter/material.dart';
 // import 'views/public/home_view.dart';
 import 'utils/app_colors.dart';
@@ -52,7 +53,7 @@ class DrivingSchoolApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const StudentListView(),
+      home: const AddStudentView(),
     );
   }
 }
