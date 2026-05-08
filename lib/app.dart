@@ -1,6 +1,7 @@
 // import 'package:driving_school_app/views/owner/owner_dashboard_view.dart';
 // import 'package:driving_school_app/views/owner/students/add_student_view.dart';
-import 'package:driving_school_app/views/owner/payments/payments_view.dart';
+import 'package:driving_school_app/views/owner/attendance/attendance_view.dart';
+// import 'package:driving_school_app/views/owner/payments/payments_view.dart';
 // import 'package:driving_school_app/views/owner/students/student_details_view.dart';
 // import 'package:driving_school_app/views/owner/students/student_list_view.dart';
 import 'package:flutter/material.dart';
@@ -55,7 +56,7 @@ class DrivingSchoolApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const PaymentsView(),
+      home: const AttendanceView(),
     );
   }
 }
