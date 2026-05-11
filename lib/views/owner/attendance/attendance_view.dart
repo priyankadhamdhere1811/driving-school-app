@@ -97,10 +97,12 @@ class AttendanceView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      padding: AppSpacing.ownerPagePadding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1400),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.ownerMaxContentWidth,
+          ),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -149,7 +151,7 @@ class _PageHeader extends StatelessWidget {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Attendance', style: AppTextStyles.sectionTitle),
+                    Text('Attendance', style: AppTextStyles.ownerPageTitle),
                     SizedBox(height: AppSpacing.sm),
                     Text(
                       'Track daily student attendance and batch participation.',
@@ -298,11 +300,7 @@ class _SummaryCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             Text(
               data.value,
-              style: const TextStyle(
-                color: AppColors.textDark,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
+              style: AppTextStyles.ownerMetricValue,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -381,7 +379,7 @@ class _FilterChip extends StatelessWidget {
       selected: selected,
       onSelected: (_) {},
       label: Text(label),
-      selectedColor: const Color(0xFFFFEBEE),
+      selectedColor: AppColors.ownerTint,
       checkmarkColor: AppColors.primary,
       side: BorderSide(
         color:
@@ -422,11 +420,11 @@ class _AttendanceTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingTextStyle: const TextStyle(
-            color: AppColors.textDark,
-            fontWeight: FontWeight.w900,
-          ),
-          dataTextStyle: const TextStyle(color: AppColors.textDark),
+          headingTextStyle: AppTextStyles.tableHeader,
+          dataTextStyle: AppTextStyles.tableBody,
+          headingRowHeight: AppSpacing.tableHeadingRowHeight,
+          dataRowMinHeight: AppSpacing.tableDataRowMinHeight,
+          dataRowMaxHeight: AppSpacing.tableDataRowMaxHeight,
           columns: const [
             DataColumn(label: Text('Student Name')),
             DataColumn(label: Text('Course')),
@@ -513,11 +511,7 @@ class _AttendanceCard extends StatelessWidget {
             children: [
               Text(
                 student.name,
-                style: const TextStyle(
-                  color: AppColors.textDark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                ),
+                style: AppTextStyles.ownerCardTitle,
               ),
               _StatusBadge(status: student.status),
             ],
@@ -661,11 +655,7 @@ class _BatchCard extends StatelessWidget {
           children: [
             Text(
               batch.name,
-              style: const TextStyle(
-                color: AppColors.textDark,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-              ),
+              style: AppTextStyles.ownerCardTitle,
             ),
             const SizedBox(height: AppSpacing.xl),
             _InfoLine('Total students', batch.totalStudents),
@@ -766,7 +756,7 @@ class _ProgressLine extends StatelessWidget {
           child: LinearProgressIndicator(
             value: value,
             minHeight: 10,
-            backgroundColor: const Color(0xFFFFEBEE),
+            backgroundColor: AppColors.ownerTint,
             valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
         ),
@@ -787,7 +777,7 @@ class _TrendCard extends StatelessWidget {
       width: width,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusMd,
         border: Border.all(color: AppColors.border),
       ),
@@ -830,7 +820,7 @@ class _OverallRateCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusLg,
         border: Border.all(color: AppColors.border),
       ),
@@ -878,11 +868,7 @@ class _SectionCard extends StatelessWidget {
                   const SizedBox(width: AppSpacing.sm),
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w900,
-                    ),
+                    style: AppTextStyles.ownerCardTitle,
                   ),
                 ],
               ),
@@ -994,7 +980,7 @@ class _SoftCard extends StatelessWidget {
   const _SoftCard({
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.card),
-    this.radius = AppSpacing.radiusXl,
+    this.radius = AppSpacing.ownerCardRadius,
   });
 
   @override
@@ -1024,6 +1010,7 @@ ButtonStyle _filledButtonStyle(Color color) {
     backgroundColor: color,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+    minimumSize: const Size(0, 44),
     textStyle: AppTextStyles.button,
     shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
   );
@@ -1033,6 +1020,7 @@ ButtonStyle _outlinedButtonStyle() {
   return OutlinedButton.styleFrom(
     foregroundColor: AppColors.textDark,
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+    minimumSize: const Size(0, 44),
     textStyle: AppTextStyles.button,
     shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
   );

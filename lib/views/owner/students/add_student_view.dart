@@ -11,15 +11,14 @@ class AddStudentView extends StatelessWidget {
   Widget build(BuildContext context) {
     return SafeArea(
       child: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          20,
-          20,
-          28 + MediaQuery.viewInsetsOf(context).bottom,
+        padding: AppSpacing.ownerPagePadding.copyWith(
+          bottom: 32 + MediaQuery.viewInsetsOf(context).bottom,
         ),
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: const BoxConstraints(
+              maxWidth: AppSpacing.ownerCompactMaxContentWidth,
+            ),
             child: const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -81,7 +80,7 @@ class _PageHeader extends StatelessWidget {
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Add Student', style: AppTextStyles.sectionTitle),
+          Text('Add Student', style: AppTextStyles.ownerPageTitle),
           SizedBox(height: AppSpacing.sm),
           Text(
             'Create new student profile and fee structure.',
@@ -270,7 +269,7 @@ class _SectionHeader extends StatelessWidget {
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFEBEE),
+            color: AppColors.ownerTint,
             borderRadius: AppSpacing.radiusMd,
           ),
           child: Icon(icon, color: AppColors.primary, size: 22),
@@ -432,7 +431,7 @@ class _PaymentSummaryStrip extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusLg,
         border: Border.all(color: AppColors.border),
       ),
@@ -528,7 +527,7 @@ class _ActionBar extends StatelessWidget {
       padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         color: AppColors.card,
-        borderRadius: AppSpacing.radiusXl,
+        borderRadius: AppSpacing.ownerCardRadius,
         border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
         boxShadow: [
           BoxShadow(
@@ -558,6 +557,7 @@ class _ActionButtons extends StatelessWidget {
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.textDark,
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            minimumSize: const Size(0, 44),
             shape: const RoundedRectangleBorder(
               borderRadius: AppSpacing.radiusMd,
             ),
@@ -571,6 +571,7 @@ class _ActionButtons extends StatelessWidget {
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+            minimumSize: const Size(0, 44),
             textStyle: AppTextStyles.button,
             shape: const RoundedRectangleBorder(
               borderRadius: AppSpacing.radiusMd,
@@ -591,7 +592,7 @@ class _ActionButtons extends StatelessWidget {
 BoxDecoration _cardDecoration() {
   return BoxDecoration(
     color: AppColors.card,
-    borderRadius: AppSpacing.radiusXl,
+    borderRadius: AppSpacing.ownerCardRadius,
     border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
     boxShadow: [
       BoxShadow(

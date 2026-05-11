@@ -121,7 +121,7 @@ class _NavigationContent extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.xl),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: AppColors.ownerTint,
                 borderRadius: AppSpacing.radiusLg,
               ),
               child: const Text(
@@ -151,7 +151,7 @@ class _SidebarTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Material(
-        color: isSelected ? const Color(0xFFFFEBEE) : Colors.transparent,
+        color: isSelected ? AppColors.ownerTint : Colors.transparent,
         borderRadius: AppSpacing.radiusMd,
         child: InkWell(
           onTap: () {

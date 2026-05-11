@@ -43,10 +43,12 @@ class StudentListView extends StatelessWidget {
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(AppSpacing.sectionX),
+      padding: AppSpacing.ownerPagePadding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1400),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.ownerMaxContentWidth,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -100,7 +102,7 @@ class _PageHeader extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.card),
-      decoration: _cardDecoration(),
+      decoration: _cardDecoration(radius: AppSpacing.ownerHeroCardRadius),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final isNarrow = constraints.maxWidth < 620;
@@ -119,7 +121,7 @@ class _PageHeader extends StatelessWidget {
                 child: const Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Students', style: AppTextStyles.sectionTitle),
+                    Text('Students', style: AppTextStyles.ownerPageTitle),
                     SizedBox(height: AppSpacing.sm),
                     Text(
                       'Manage learner details, fees, course status, and follow-ups.',
@@ -139,6 +141,7 @@ class _PageHeader extends StatelessWidget {
                     horizontal: AppSpacing.xxl,
                     vertical: AppSpacing.lg,
                   ),
+                  minimumSize: const Size(0, 44),
                   textStyle: AppTextStyles.button,
                   shape: const RoundedRectangleBorder(
                     borderRadius: AppSpacing.radiusMd,
@@ -216,7 +219,7 @@ class _FilterChip extends StatelessWidget {
       selected: selected,
       onSelected: (_) {},
       label: Text(label),
-      selectedColor: const Color(0xFFFFEBEE),
+      selectedColor: AppColors.ownerTint,
       checkmarkColor: AppColors.primary,
       side: BorderSide(
         color:
@@ -240,11 +243,11 @@ class _StudentTable extends StatelessWidget {
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: DataTable(
-          headingTextStyle: const TextStyle(
-            color: AppColors.textDark,
-            fontWeight: FontWeight.w900,
-          ),
-          dataTextStyle: const TextStyle(color: AppColors.textDark),
+          headingTextStyle: AppTextStyles.tableHeader,
+          dataTextStyle: AppTextStyles.tableBody,
+          headingRowHeight: AppSpacing.tableHeadingRowHeight,
+          dataRowMinHeight: AppSpacing.tableDataRowMinHeight,
+          dataRowMaxHeight: AppSpacing.tableDataRowMaxHeight,
           columns: const [
             DataColumn(label: Text('Name')),
             DataColumn(label: Text('Mobile')),
@@ -411,10 +414,12 @@ class _StatusBadge extends StatelessWidget {
   }
 }
 
-BoxDecoration _cardDecoration() {
+BoxDecoration _cardDecoration({
+  BorderRadius radius = AppSpacing.ownerCardRadius,
+}) {
   return BoxDecoration(
     color: AppColors.card,
-    borderRadius: AppSpacing.radiusXl,
+    borderRadius: radius,
     border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
     boxShadow: [
       BoxShadow(

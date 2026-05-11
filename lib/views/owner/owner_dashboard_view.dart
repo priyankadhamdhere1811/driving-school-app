@@ -16,8 +16,6 @@ class OwnerDashboardView extends StatelessWidget {
 class _DashboardContent extends StatelessWidget {
   const _DashboardContent();
 
-  static const double _maxDashboardWidth = 1400;
-
   @override
   Widget build(BuildContext context) {
     final cards = [
@@ -59,15 +57,17 @@ class _DashboardContent extends StatelessWidget {
     ];
 
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 28, 24, 36),
+      padding: AppSpacing.ownerDashboardPadding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: _maxDashboardWidth),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.ownerMaxContentWidth,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const _HeaderBlock(),
-              const SizedBox(height: 26),
+              const SizedBox(height: AppSpacing.sectionX),
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
@@ -96,7 +96,7 @@ class _DashboardContent extends StatelessWidget {
                   );
                 },
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: AppSpacing.sectionX),
               const _DashboardSections(),
             ],
           ),
@@ -114,22 +114,11 @@ class _HeaderBlock extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.card),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: AppSpacing.radiusXl,
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(radius: AppSpacing.ownerHeroCardRadius),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Good morning, Owner', style: AppTextStyles.sectionTitle),
+          Text('Good morning, Owner', style: AppTextStyles.ownerPageTitle),
           SizedBox(height: AppSpacing.sm),
           Text(
             'Here is a quick view of students, payments, attendance, and enquiries.',
@@ -152,18 +141,7 @@ class _MetricCard extends StatelessWidget {
     return Container(
       width: width,
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: AppSpacing.radiusLg,
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -179,11 +157,7 @@ class _MetricCard extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           Text(
             data.value,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textDark,
-            ),
+            style: AppTextStyles.ownerMetricValue,
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
@@ -310,28 +284,13 @@ class _InfoPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        color: AppColors.card,
-        borderRadius: AppSpacing.radiusLg,
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 16,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
+      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: const TextStyle(
-              fontSize: 18,
-              fontWeight: FontWeight.w900,
-              color: AppColors.textDark,
-            ),
+            style: AppTextStyles.ownerCardTitle,
           ),
           const SizedBox(height: AppSpacing.xl),
           ...rows.map((row) => _InfoListTile(row: row)),
@@ -339,6 +298,23 @@ class _InfoPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+BoxDecoration _cardDecoration({
+  BorderRadius radius = AppSpacing.ownerCardRadius,
+}) {
+  return BoxDecoration(
+    color: AppColors.card,
+    borderRadius: radius,
+    border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withValues(alpha: 0.035),
+        blurRadius: 16,
+        offset: const Offset(0, 8),
+      ),
+    ],
+  );
 }
 
 class _InfoListTile extends StatelessWidget {

@@ -13,4 +13,6 @@ class AppColors {
   static const textLight = textGray;
   static const success = Color(0xFF2E7D32);
   static const border = Color(0xFFFFCDD2);
+  static const ownerTint = Color(0xFFFFEBEE);
+  static const ownerCardTint = Color(0xFFFFF7F7);
 }

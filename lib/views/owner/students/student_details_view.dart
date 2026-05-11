@@ -39,10 +39,12 @@ class StudentDetailsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      padding: AppSpacing.ownerPagePadding,
       child: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1180),
+          constraints: const BoxConstraints(
+            maxWidth: AppSpacing.ownerCompactMaxContentWidth,
+          ),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -89,7 +91,7 @@ class _HeaderSection extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 34,
-                      backgroundColor: const Color(0xFFFFEBEE),
+                      backgroundColor: AppColors.ownerTint,
                       child: Text(
                         student.initials,
                         style: const TextStyle(
@@ -104,7 +106,10 @@ class _HeaderSection extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(student.name, style: AppTextStyles.sectionTitle),
+                          Text(
+                            student.name,
+                            style: AppTextStyles.ownerPageTitle,
+                          ),
                           const SizedBox(height: AppSpacing.sm),
                           Text(
                             student.course,
@@ -236,7 +241,7 @@ class _StatCard extends StatelessWidget {
               width: 42,
               height: 42,
               decoration: BoxDecoration(
-                color: const Color(0xFFFFEBEE),
+                color: AppColors.ownerTint,
                 borderRadius: AppSpacing.radiusMd,
               ),
               child: Icon(stat.icon, color: AppColors.primary),
@@ -244,11 +249,7 @@ class _StatCard extends StatelessWidget {
             const SizedBox(height: AppSpacing.xl),
             Text(
               stat.value,
-              style: const TextStyle(
-                color: AppColors.textDark,
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-              ),
+              style: AppTextStyles.ownerMetricValue,
             ),
             const SizedBox(height: AppSpacing.xs),
             Text(
@@ -363,11 +364,11 @@ class _PaymentHistorySection extends StatelessWidget {
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: DataTable(
-              headingTextStyle: const TextStyle(
-                color: AppColors.textDark,
-                fontWeight: FontWeight.w900,
-              ),
-              dataTextStyle: const TextStyle(color: AppColors.textDark),
+              headingTextStyle: AppTextStyles.tableHeader,
+              dataTextStyle: AppTextStyles.tableBody,
+              headingRowHeight: AppSpacing.tableHeadingRowHeight,
+              dataRowMinHeight: AppSpacing.tableDataRowMinHeight,
+              dataRowMaxHeight: AppSpacing.tableDataRowMaxHeight,
               columns: const [
                 DataColumn(label: Text('Date')),
                 DataColumn(label: Text('Amount')),
@@ -428,7 +429,7 @@ class _AttendanceSection extends StatelessWidget {
             child: const LinearProgressIndicator(
               value: 0.82,
               minHeight: 10,
-              backgroundColor: Color(0xFFFFEBEE),
+              backgroundColor: AppColors.ownerTint,
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
             ),
           ),
@@ -543,11 +544,7 @@ class _SectionCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: const TextStyle(
-                    color: AppColors.textDark,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w900,
-                  ),
+                  style: AppTextStyles.ownerCardTitle,
                 ),
               ),
             ],
@@ -631,7 +628,7 @@ class _PaymentListTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusMd,
         border: Border.all(color: AppColors.border),
       ),
@@ -656,7 +653,7 @@ class _PaymentListTile extends StatelessWidget {
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '${payment.amount} • ${payment.method}',
+            '${payment.amount} - ${payment.method}',
             style: const TextStyle(color: AppColors.textGray),
           ),
         ],
@@ -677,7 +674,7 @@ class _MiniMetric extends StatelessWidget {
       width: 150,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusMd,
         border: Border.all(color: AppColors.border),
       ),
@@ -709,7 +706,7 @@ class _CalendarPlaceholder extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7F7),
+        color: AppColors.ownerCardTint,
         borderRadius: AppSpacing.radiusMd,
         border: Border.all(color: AppColors.border),
       ),
@@ -790,7 +787,7 @@ class _SoftCard extends StatelessWidget {
   const _SoftCard({
     required this.child,
     this.padding = const EdgeInsets.all(AppSpacing.card),
-    this.radius = AppSpacing.radiusXl,
+    this.radius = AppSpacing.ownerCardRadius,
   });
 
   @override
@@ -820,6 +817,7 @@ ButtonStyle _filledButtonStyle(Color color) {
     backgroundColor: color,
     foregroundColor: Colors.white,
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+    minimumSize: const Size(0, 44),
     textStyle: AppTextStyles.button,
     shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
   );
@@ -829,6 +827,7 @@ ButtonStyle _outlinedButtonStyle() {
   return OutlinedButton.styleFrom(
     foregroundColor: AppColors.textDark,
     padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
+    minimumSize: const Size(0, 44),
     textStyle: AppTextStyles.button,
     shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
   );
