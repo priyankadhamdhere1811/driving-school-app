@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
+import '../../../widgets/owner/owner_search_filter_bar.dart';
+import '../../../widgets/owner/owner_status_badge.dart';
 
 class StudentListView extends StatelessWidget {
   const StudentListView({super.key});
@@ -54,7 +56,11 @@ class StudentListView extends StatelessWidget {
             children: [
               const _PageHeader(),
               const SizedBox(height: AppSpacing.sectionX),
-              const _SearchAndFilters(),
+              const OwnerSearchFilterBar(
+                hintText: 'Search by name, mobile, area, or course',
+                filters: ['All', 'Active', 'Completed', 'Pending Payment'],
+                breakpoint: 520,
+              ),
               const SizedBox(height: AppSpacing.sectionX),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -156,79 +162,6 @@ class _PageHeader extends StatelessWidget {
   }
 }
 
-class _SearchAndFilters extends StatelessWidget {
-  const _SearchAndFilters();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: _cardDecoration(),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 520;
-
-          return Wrap(
-            spacing: AppSpacing.xl,
-            runSpacing: AppSpacing.xl,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: isNarrow ? constraints.maxWidth : 360,
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by name, mobile, area, or course',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width:
-                    isNarrow
-                        ? constraints.maxWidth
-                        : constraints.maxWidth - 380,
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: const [
-                    _FilterChip(label: 'All', selected: true),
-                    _FilterChip(label: 'Active'),
-                    _FilterChip(label: 'Completed'),
-                    _FilterChip(label: 'Pending Payment'),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-
-  const _FilterChip({required this.label, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      selected: selected,
-      onSelected: (_) {},
-      label: Text(label),
-      selectedColor: AppColors.ownerTint,
-      checkmarkColor: AppColors.primary,
-      side: BorderSide(
-        color:
-            selected ? AppColors.primary : Colors.black.withValues(alpha: 0.08),
-      ),
-    );
-  }
-}
-
 class _StudentTable extends StatelessWidget {
   final List<_StudentData> students;
 
@@ -270,7 +203,7 @@ class _StudentTable extends StatelessWidget {
                         DataCell(Text(student.duration)),
                         DataCell(Text(student.totalFees)),
                         DataCell(Text(student.remainingFees)),
-                        DataCell(_StatusBadge(status: student.status)),
+                        DataCell(OwnerStatusBadge(status: student.status)),
                       ],
                     ),
                   )
@@ -309,7 +242,7 @@ class _StudentCard extends StatelessWidget {
                   color: AppColors.textDark,
                 ),
               ),
-              _StatusBadge(status: student.status),
+              OwnerStatusBadge(status: student.status),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -377,38 +310,6 @@ class _InfoLine extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        status == 'Completed'
-            ? AppColors.ctaGreen
-            : status == 'Pending Payment'
-            ? AppColors.accent
-            : AppColors.primary;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
-        ),
       ),
     );
   }

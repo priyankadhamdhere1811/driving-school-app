@@ -247,10 +247,7 @@ class _StatCard extends StatelessWidget {
               child: Icon(stat.icon, color: AppColors.primary),
             ),
             const SizedBox(height: AppSpacing.xl),
-            Text(
-              stat.value,
-              style: AppTextStyles.ownerMetricValue,
-            ),
+            Text(stat.value, style: AppTextStyles.ownerMetricValue),
             const SizedBox(height: AppSpacing.xs),
             Text(
               stat.label,
@@ -541,12 +538,7 @@ class _SectionCard extends StatelessWidget {
             children: [
               Icon(icon, color: AppColors.primary),
               const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppTextStyles.ownerCardTitle,
-                ),
-              ),
+              Expanded(child: Text(title, style: AppTextStyles.ownerCardTitle)),
             ],
           ),
           const SizedBox(height: AppSpacing.xl),

@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
+import '../../../widgets/owner/owner_action_button.dart';
+import '../../../widgets/owner/owner_search_filter_bar.dart';
+import '../../../widgets/owner/owner_section_card.dart';
+import '../../../widgets/owner/owner_stat_card.dart';
+import '../../../widgets/owner/owner_status_badge.dart';
 
 class AttendanceView extends StatelessWidget {
   const AttendanceView({super.key});
@@ -110,7 +115,17 @@ class AttendanceView extends StatelessWidget {
               SizedBox(height: AppSpacing.sectionX),
               _SummaryCards(),
               SizedBox(height: AppSpacing.sectionX),
-              _SearchAndFilters(),
+              OwnerSearchFilterBar(
+                hintText: 'Search by student name or mobile',
+                filters: [
+                  'All',
+                  'Present',
+                  'Absent',
+                  'Morning Batch',
+                  'Evening Batch',
+                ],
+                breakpoint: 600,
+              ),
               SizedBox(height: AppSpacing.sectionX),
               _AttendanceRecords(students: _students),
               SizedBox(height: AppSpacing.sectionX),
@@ -183,13 +198,13 @@ class _HeaderActions extends StatelessWidget {
       onPressed: () {},
       icon: const Icon(Icons.fact_check_outlined),
       label: const Text('Mark Attendance'),
-      style: _filledButtonStyle(AppColors.primary),
+      style: OwnerActionButton.filledStyle(AppColors.primary),
     );
     final exportAttendance = OutlinedButton.icon(
       onPressed: () {},
       icon: const Icon(Icons.file_download_outlined),
       label: const Text('Export Attendance'),
-      style: _outlinedButtonStyle(),
+      style: OwnerActionButton.outlinedStyle(),
     );
 
     if (isNarrow) {
@@ -264,127 +279,18 @@ class _SummaryCards extends StatelessWidget {
           runSpacing: gap,
           children:
               cards
-                  .map((card) => _SummaryCard(width: cardWidth, data: card))
+                  .map(
+                    (card) => OwnerStatCard(
+                      width: cardWidth,
+                      title: card.label,
+                      value: card.value,
+                      icon: card.icon,
+                      color: card.color,
+                    ),
+                  )
                   .toList(),
         );
       },
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final double width;
-  final _SummaryData data;
-
-  const _SummaryCard({required this.width, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: _SoftCard(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        radius: AppSpacing.radiusLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: data.color.withValues(alpha: 0.1),
-                borderRadius: AppSpacing.radiusMd,
-              ),
-              child: Icon(data.icon, color: data.color),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              data.value,
-              style: AppTextStyles.ownerMetricValue,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              data.label,
-              style: const TextStyle(
-                color: AppColors.textGray,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchAndFilters extends StatelessWidget {
-  const _SearchAndFilters();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 600;
-
-          return Wrap(
-            spacing: AppSpacing.xl,
-            runSpacing: AppSpacing.xl,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: isNarrow ? constraints.maxWidth : 360,
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by student name or mobile',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width:
-                    isNarrow
-                        ? constraints.maxWidth
-                        : constraints.maxWidth - 380,
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: const [
-                    _FilterChip(label: 'All', selected: true),
-                    _FilterChip(label: 'Present'),
-                    _FilterChip(label: 'Absent'),
-                    _FilterChip(label: 'Morning Batch'),
-                    _FilterChip(label: 'Evening Batch'),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-
-  const _FilterChip({required this.label, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      selected: selected,
-      onSelected: (_) {},
-      label: Text(label),
-      selectedColor: AppColors.ownerTint,
-      checkmarkColor: AppColors.primary,
-      side: BorderSide(
-        color:
-            selected ? AppColors.primary : Colors.black.withValues(alpha: 0.08),
-      ),
     );
   }
 }
@@ -449,7 +355,7 @@ class _AttendanceTable extends StatelessWidget {
                         DataCell(Text(student.course)),
                         DataCell(Text(student.batch)),
                         DataCell(Text(student.mobile)),
-                        DataCell(_StatusBadge(status: student.status)),
+                        DataCell(OwnerStatusBadge(status: student.status)),
                         DataCell(Text(student.attendancePercent)),
                         DataCell(Text(student.lastAttended)),
                         DataCell(
@@ -509,11 +415,8 @@ class _AttendanceCard extends StatelessWidget {
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                student.name,
-                style: AppTextStyles.ownerCardTitle,
-              ),
-              _StatusBadge(status: student.status),
+              Text(student.name, style: AppTextStyles.ownerCardTitle),
+              OwnerStatusBadge(status: student.status),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -529,7 +432,7 @@ class _AttendanceCard extends StatelessWidget {
               onPressed: () {},
               icon: const Icon(Icons.edit_calendar_outlined),
               label: const Text('Update'),
-              style: _filledButtonStyle(AppColors.primary),
+              style: OwnerActionButton.filledStyle(AppColors.primary),
             ),
           ),
         ],
@@ -653,10 +556,7 @@ class _BatchCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              batch.name,
-              style: AppTextStyles.ownerCardTitle,
-            ),
+            Text(batch.name, style: AppTextStyles.ownerCardTitle),
             const SizedBox(height: AppSpacing.xl),
             _InfoLine('Total students', batch.totalStudents),
             _InfoLine('Present count', batch.presentCount),
@@ -851,34 +751,11 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: AppSpacing.md,
-            runSpacing: AppSpacing.sm,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(icon, color: AppColors.primary),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    title,
-                    style: AppTextStyles.ownerCardTitle,
-                  ),
-                ],
-              ),
-              if (trailing != null) trailing!,
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          child,
-        ],
-      ),
+    return OwnerSectionCard(
+      title: title,
+      icon: icon,
+      trailing: trailing,
+      child: child,
     );
   }
 }
@@ -941,37 +818,6 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final isPresent = status == 'Present';
-    final color = isPresent ? AppColors.primary : AppColors.textGray;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color:
-            isPresent
-                ? AppColors.primary.withValues(alpha: 0.1)
-                : Colors.grey.shade200,
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 class _SoftCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -1003,27 +849,6 @@ class _SoftCard extends StatelessWidget {
       child: child,
     );
   }
-}
-
-ButtonStyle _filledButtonStyle(Color color) {
-  return FilledButton.styleFrom(
-    backgroundColor: color,
-    foregroundColor: Colors.white,
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-    minimumSize: const Size(0, 44),
-    textStyle: AppTextStyles.button,
-    shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
-  );
-}
-
-ButtonStyle _outlinedButtonStyle() {
-  return OutlinedButton.styleFrom(
-    foregroundColor: AppColors.textDark,
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-    minimumSize: const Size(0, 44),
-    textStyle: AppTextStyles.button,
-    shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
-  );
 }
 
 class _AttendanceStudent {

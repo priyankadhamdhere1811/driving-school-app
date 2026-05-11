@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_spacing.dart';
 import '../../utils/app_text_styles.dart';
+import '../../widgets/owner/owner_section_card.dart';
+import '../../widgets/owner/owner_stat_card.dart';
 
 class OwnerDashboardView extends StatelessWidget {
   const OwnerDashboardView({super.key});
@@ -89,8 +91,14 @@ class _DashboardContent extends StatelessWidget {
                     children:
                         cards
                             .map(
-                              (card) =>
-                                  _MetricCard(width: cardWidth, data: card),
+                              (card) => OwnerStatCard(
+                                width: cardWidth,
+                                title: card.title,
+                                value: card.value,
+                                subtitle: card.subtitle,
+                                icon: card.icon,
+                                color: card.color,
+                              ),
                             )
                             .toList(),
                   );
@@ -123,54 +131,6 @@ class _HeaderBlock extends StatelessWidget {
           Text(
             'Here is a quick view of students, payments, attendance, and enquiries.',
             style: AppTextStyles.sectionSubtitle,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  final double width;
-  final _MetricData data;
-
-  const _MetricCard({required this.width, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: data.color.withValues(alpha: 0.1),
-              borderRadius: AppSpacing.radiusMd,
-            ),
-            child: Icon(data.icon, color: data.color),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            data.value,
-            style: AppTextStyles.ownerMetricValue,
-          ),
-          const SizedBox(height: AppSpacing.xs),
-          Text(
-            data.title,
-            style: const TextStyle(
-              color: AppColors.textDark,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            data.subtitle,
-            style: const TextStyle(color: AppColors.textGray),
           ),
         ],
       ),
@@ -282,19 +242,12 @@ class _InfoPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return OwnerSectionCard(
+      title: title,
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: _cardDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: AppTextStyles.ownerCardTitle,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          ...rows.map((row) => _InfoListTile(row: row)),
-        ],
+        children: [...rows.map((row) => _InfoListTile(row: row))],
       ),
     );
   }

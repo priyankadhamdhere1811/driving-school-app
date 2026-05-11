@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
+import '../../../widgets/owner/owner_action_button.dart';
+import '../../../widgets/owner/owner_search_filter_bar.dart';
+import '../../../widgets/owner/owner_section_card.dart';
+import '../../../widgets/owner/owner_stat_card.dart';
+import '../../../widgets/owner/owner_status_badge.dart';
 
 class PaymentsView extends StatelessWidget {
   const PaymentsView({super.key});
@@ -99,7 +104,10 @@ class PaymentsView extends StatelessWidget {
               SizedBox(height: AppSpacing.sectionX),
               _SummaryCardsRow(),
               SizedBox(height: AppSpacing.sectionX),
-              _SearchAndFilters(),
+              OwnerSearchFilterBar(
+                hintText: 'Search by student name or mobile',
+                filters: ['All', 'Paid', 'Pending', 'Overdue'],
+              ),
               SizedBox(height: AppSpacing.sectionX),
               _PaymentsSection(payments: _payments),
               SizedBox(height: AppSpacing.sectionX),
@@ -173,13 +181,13 @@ class _HeaderActions extends StatelessWidget {
       onPressed: () {},
       icon: const Icon(Icons.add_card_outlined),
       label: const Text('Add Payment'),
-      style: _filledButtonStyle(AppColors.primary),
+      style: OwnerActionButton.filledStyle(AppColors.primary),
     );
     final exportReport = OutlinedButton.icon(
       onPressed: () {},
       icon: const Icon(Icons.file_download_outlined),
       label: const Text('Export Report'),
-      style: _outlinedButtonStyle(),
+      style: OwnerActionButton.outlinedStyle(),
     );
 
     if (isNarrow) {
@@ -254,126 +262,18 @@ class _SummaryCardsRow extends StatelessWidget {
           runSpacing: gap,
           children:
               cards
-                  .map((card) => _SummaryCard(width: cardWidth, data: card))
+                  .map(
+                    (card) => OwnerStatCard(
+                      width: cardWidth,
+                      title: card.label,
+                      value: card.value,
+                      icon: card.icon,
+                      color: card.color,
+                    ),
+                  )
                   .toList(),
         );
       },
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final double width;
-  final _SummaryData data;
-
-  const _SummaryCard({required this.width, required this.data});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: width,
-      child: _SoftCard(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        radius: AppSpacing.radiusLg,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: data.color.withValues(alpha: 0.1),
-                borderRadius: AppSpacing.radiusMd,
-              ),
-              child: Icon(data.icon, color: data.color),
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              data.value,
-              style: AppTextStyles.ownerMetricValue,
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              data.label,
-              style: const TextStyle(
-                color: AppColors.textGray,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchAndFilters extends StatelessWidget {
-  const _SearchAndFilters();
-
-  @override
-  Widget build(BuildContext context) {
-    return _SoftCard(
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final isNarrow = constraints.maxWidth < 560;
-
-          return Wrap(
-            spacing: AppSpacing.xl,
-            runSpacing: AppSpacing.xl,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              SizedBox(
-                width: isNarrow ? constraints.maxWidth : 360,
-                child: const TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search by student name or mobile',
-                    prefixIcon: Icon(Icons.search),
-                  ),
-                ),
-              ),
-              SizedBox(
-                width:
-                    isNarrow
-                        ? constraints.maxWidth
-                        : constraints.maxWidth - 380,
-                child: Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: const [
-                    _FilterChip(label: 'All', selected: true),
-                    _FilterChip(label: 'Paid'),
-                    _FilterChip(label: 'Pending'),
-                    _FilterChip(label: 'Overdue'),
-                  ],
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool selected;
-
-  const _FilterChip({required this.label, this.selected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return FilterChip(
-      selected: selected,
-      onSelected: (_) {},
-      label: Text(label),
-      selectedColor: AppColors.ownerTint,
-      checkmarkColor: AppColors.primary,
-      side: BorderSide(
-        color:
-            selected ? AppColors.primary : Colors.black.withValues(alpha: 0.08),
-      ),
     );
   }
 }
@@ -455,7 +355,7 @@ class _PaymentsTable extends StatelessWidget {
                         DataCell(Text(payment.paid)),
                         DataCell(Text(payment.remaining)),
                         DataCell(Text(payment.nextDueDate)),
-                        DataCell(_StatusBadge(status: payment.status)),
+                        DataCell(OwnerStatusBadge(status: payment.status)),
                         DataCell(
                           IconButton(
                             tooltip: 'Record payment',
@@ -513,11 +413,8 @@ class _PaymentCard extends StatelessWidget {
             alignment: WrapAlignment.spaceBetween,
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              Text(
-                payment.studentName,
-                style: AppTextStyles.ownerCardTitle,
-              ),
-              _StatusBadge(status: payment.status),
+              Text(payment.studentName, style: AppTextStyles.ownerCardTitle),
+              OwnerStatusBadge(status: payment.status),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -538,7 +435,7 @@ class _PaymentCard extends StatelessWidget {
               onPressed: () {},
               icon: const Icon(Icons.add_card_outlined),
               label: const Text('Record'),
-              style: _filledButtonStyle(AppColors.primary),
+              style: OwnerActionButton.filledStyle(AppColors.primary),
             ),
           ),
         ],
@@ -662,7 +559,7 @@ class _TransactionTile extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              _StatusBadge(status: data.status),
+              OwnerStatusBadge(status: data.status),
             ],
           );
         },
@@ -734,7 +631,7 @@ class _ReminderTile extends StatelessWidget {
                 onPressed: () {},
                 icon: const Icon(Icons.alarm_outlined, size: 18),
                 label: const Text('Reminder'),
-                style: _outlinedButtonStyle(),
+                style: OwnerActionButton.outlinedStyle(),
               ),
             ],
           );
@@ -831,27 +728,7 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _SoftCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, color: AppColors.primary),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: Text(
-                  title,
-                  style: AppTextStyles.ownerCardTitle,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          child,
-        ],
-      ),
-    );
+    return OwnerSectionCard(title: title, icon: icon, child: child);
   }
 }
 
@@ -912,38 +789,6 @@ class _InfoLine extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  final String status;
-
-  const _StatusBadge({required this.status});
-
-  @override
-  Widget build(BuildContext context) {
-    final color =
-        status == 'Paid'
-            ? AppColors.ctaGreen
-            : status == 'Overdue'
-            ? AppColors.darkRed
-            : AppColors.accent;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        status,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-    );
-  }
-}
-
 class _SoftCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry padding;
@@ -975,27 +820,6 @@ class _SoftCard extends StatelessWidget {
       child: child,
     );
   }
-}
-
-ButtonStyle _filledButtonStyle(Color color) {
-  return FilledButton.styleFrom(
-    backgroundColor: color,
-    foregroundColor: Colors.white,
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-    minimumSize: const Size(0, 44),
-    textStyle: AppTextStyles.button,
-    shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
-  );
-}
-
-ButtonStyle _outlinedButtonStyle() {
-  return OutlinedButton.styleFrom(
-    foregroundColor: AppColors.textDark,
-    padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-    minimumSize: const Size(0, 44),
-    textStyle: AppTextStyles.button,
-    shape: const RoundedRectangleBorder(borderRadius: AppSpacing.radiusMd),
-  );
 }
 
 class _PaymentData {
