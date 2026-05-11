@@ -85,37 +85,29 @@ class PaymentsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.softBackground,
-      appBar: AppBar(
-        title: const Text('Payments'),
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PageHeader(),
-                SizedBox(height: AppSpacing.sectionX),
-                _SummaryCardsRow(),
-                SizedBox(height: AppSpacing.sectionX),
-                _SearchAndFilters(),
-                SizedBox(height: AppSpacing.sectionX),
-                _PaymentsSection(payments: _payments),
-                SizedBox(height: AppSpacing.sectionX),
-                _SecondarySections(
-                  transactions: _transactions,
-                  reminders: _reminders,
-                ),
-                SizedBox(height: AppSpacing.sectionX),
-                _AnalyticsSection(),
-              ],
-            ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PageHeader(),
+              SizedBox(height: AppSpacing.sectionX),
+              _SummaryCardsRow(),
+              SizedBox(height: AppSpacing.sectionX),
+              _SearchAndFilters(),
+              SizedBox(height: AppSpacing.sectionX),
+              _PaymentsSection(payments: _payments),
+              SizedBox(height: AppSpacing.sectionX),
+              _SecondarySections(
+                transactions: _transactions,
+                reminders: _reminders,
+              ),
+              SizedBox(height: AppSpacing.sectionX),
+              _AnalyticsSection(),
+            ],
           ),
         ),
       ),

@@ -96,36 +96,28 @@ class AttendanceView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.softBackground,
-      appBar: AppBar(
-        title: const Text('Attendance'),
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PageHeader(),
-                SizedBox(height: AppSpacing.sectionX),
-                _SummaryCards(),
-                SizedBox(height: AppSpacing.sectionX),
-                _SearchAndFilters(),
-                SizedBox(height: AppSpacing.sectionX),
-                _AttendanceRecords(students: _students),
-                SizedBox(height: AppSpacing.sectionX),
-                _AttendanceCalendarSection(),
-                SizedBox(height: AppSpacing.sectionX),
-                _BatchOverviewSection(batches: _batches),
-                SizedBox(height: AppSpacing.sectionX),
-                _AttendanceAnalytics(trends: _trendCards),
-              ],
-            ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _PageHeader(),
+              SizedBox(height: AppSpacing.sectionX),
+              _SummaryCards(),
+              SizedBox(height: AppSpacing.sectionX),
+              _SearchAndFilters(),
+              SizedBox(height: AppSpacing.sectionX),
+              _AttendanceRecords(students: _students),
+              SizedBox(height: AppSpacing.sectionX),
+              _AttendanceCalendarSection(),
+              SizedBox(height: AppSpacing.sectionX),
+              _BatchOverviewSection(batches: _batches),
+              SizedBox(height: AppSpacing.sectionX),
+              _AttendanceAnalytics(trends: _trendCards),
+            ],
           ),
         ),
       ),

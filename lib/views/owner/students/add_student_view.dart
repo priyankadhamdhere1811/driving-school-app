@@ -9,34 +9,26 @@ class AddStudentView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.softBackground,
-      appBar: AppBar(
-        title: const Text('Add Student'),
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.fromLTRB(
-            20,
-            20,
-            20,
-            28 + MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1180),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _PageHeader(),
-                  SizedBox(height: 14),
-                  _StudentForm(),
-                  SizedBox(height: 14),
-                  _ActionBar(),
-                ],
-              ),
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          20,
+          20,
+          28 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 1180),
+            child: const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _PageHeader(),
+                SizedBox(height: 14),
+                _StudentForm(),
+                SizedBox(height: 14),
+                _ActionBar(),
+              ],
             ),
           ),
         ),

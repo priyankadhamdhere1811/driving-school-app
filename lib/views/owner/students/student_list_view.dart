@@ -42,36 +42,28 @@ class StudentListView extends StatelessWidget {
       ),
     ];
 
-    return Scaffold(
-      backgroundColor: AppColors.softBackground,
-      appBar: AppBar(
-        title: const Text('Students'),
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.sectionX),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1400),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const _PageHeader(),
-                const SizedBox(height: AppSpacing.sectionX),
-                const _SearchAndFilters(),
-                const SizedBox(height: AppSpacing.sectionX),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    if (constraints.maxWidth >= 900) {
-                      return _StudentTable(students: students);
-                    }
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(AppSpacing.sectionX),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1400),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _PageHeader(),
+              const SizedBox(height: AppSpacing.sectionX),
+              const _SearchAndFilters(),
+              const SizedBox(height: AppSpacing.sectionX),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  if (constraints.maxWidth >= 900) {
+                    return _StudentTable(students: students);
+                  }
 
-                    return _StudentCardsList(students: students);
-                  },
-                ),
-              ],
-            ),
+                  return _StudentCardsList(students: students);
+                },
+              ),
+            ],
           ),
         ),
       ),

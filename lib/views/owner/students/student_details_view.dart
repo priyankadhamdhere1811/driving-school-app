@@ -38,30 +38,22 @@ class StudentDetailsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.softBackground,
-      appBar: AppBar(
-        title: const Text('Student Details'),
-        backgroundColor: AppColors.card,
-        surfaceTintColor: Colors.transparent,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _HeaderSection(student: _student),
-                SizedBox(height: AppSpacing.sectionX),
-                _QuickStatsRow(student: _student),
-                SizedBox(height: AppSpacing.sectionX),
-                _MainSections(student: _student, payments: _payments),
-                SizedBox(height: AppSpacing.sectionX),
-                _BottomActions(),
-              ],
-            ),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1180),
+          child: const Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _HeaderSection(student: _student),
+              SizedBox(height: AppSpacing.sectionX),
+              _QuickStatsRow(student: _student),
+              SizedBox(height: AppSpacing.sectionX),
+              _MainSections(student: _student, payments: _payments),
+              SizedBox(height: AppSpacing.sectionX),
+              _BottomActions(),
+            ],
           ),
         ),
       ),
