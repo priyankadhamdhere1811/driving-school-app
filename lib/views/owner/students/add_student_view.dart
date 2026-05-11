@@ -1,11 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/student_model.dart';
+import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
 
-class AddStudentView extends StatelessWidget {
+class AddStudentView extends StatefulWidget {
   const AddStudentView({super.key});
+
+  @override
+  State<AddStudentView> createState() => _AddStudentViewState();
+}
+
+class _AddStudentViewState extends State<AddStudentView> {
+  final _formKey = GlobalKey<FormState>();
+  final _fullNameController = TextEditingController();
+  final _mobileController = TextEditingController();
+  final _alternateMobileController = TextEditingController();
+  final _areaVillageController = TextEditingController();
+  final _addressController = TextEditingController();
+  final _durationController = TextEditingController();
+  final _startDateController = TextEditingController();
+  final _totalFeesController = TextEditingController();
+  final _advancePaidController = TextEditingController();
+  final _remainingFeesController = TextEditingController(text: '0');
+  final _nextPaymentDateController = TextEditingController();
+  final _notesController = TextEditingController();
+  String _course = 'Beginner Driving';
+  String _preferredBatch = 'Morning Batch';
+
+  @override
+  void initState() {
+    super.initState();
+    _totalFeesController.addListener(_updateRemainingFees);
+    _advancePaidController.addListener(_updateRemainingFees);
+  }
+
+  @override
+  void dispose() {
+    _totalFeesController.removeListener(_updateRemainingFees);
+    _advancePaidController.removeListener(_updateRemainingFees);
+    _fullNameController.dispose();
+    _mobileController.dispose();
+    _alternateMobileController.dispose();
+    _areaVillageController.dispose();
+    _addressController.dispose();
+    _durationController.dispose();
+    _startDateController.dispose();
+    _totalFeesController.dispose();
+    _advancePaidController.dispose();
+    _remainingFeesController.dispose();
+    _nextPaymentDateController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  void _updateRemainingFees() {
+    final totalFees = num.tryParse(_totalFeesController.text.trim()) ?? 0;
+    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
+    final remainingFees = totalFees - advancePaid;
+    final value = remainingFees < 0 ? 0 : remainingFees;
+    final text = value % 1 == 0 ? value.toInt().toString() : value.toString();
+
+    if (_remainingFeesController.text != text) {
+      _remainingFeesController.text = text;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,20 +81,114 @@ class AddStudentView extends StatelessWidget {
             constraints: const BoxConstraints(
               maxWidth: AppSpacing.ownerCompactMaxContentWidth,
             ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _PageHeader(),
-                SizedBox(height: 14),
-                _StudentForm(),
-                SizedBox(height: 14),
-                _ActionBar(),
-              ],
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _PageHeader(),
+                  const SizedBox(height: 14),
+                  _StudentForm(
+                    fullNameController: _fullNameController,
+                    mobileController: _mobileController,
+                    alternateMobileController: _alternateMobileController,
+                    areaVillageController: _areaVillageController,
+                    addressController: _addressController,
+                    durationController: _durationController,
+                    startDateController: _startDateController,
+                    totalFeesController: _totalFeesController,
+                    advancePaidController: _advancePaidController,
+                    remainingFeesController: _remainingFeesController,
+                    nextPaymentDateController: _nextPaymentDateController,
+                    notesController: _notesController,
+                    course: _course,
+                    preferredBatch: _preferredBatch,
+                    onCourseChanged: (value) {
+                      if (value != null) {
+                        setState(() => _course = value);
+                      }
+                    },
+                    onPreferredBatchChanged: (value) {
+                      if (value != null) {
+                        setState(() => _preferredBatch = value);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _ActionBar(onSave: _saveStudent),
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _saveStudent() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    final totalFees = num.tryParse(_totalFeesController.text.trim()) ?? 0;
+    if (totalFees <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Total fees must be greater than 0.')),
+      );
+      return;
+    }
+
+    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
+    final remainingFees = totalFees - advancePaid;
+    final student = StudentModel(
+      id: '',
+      fullName: _fullNameController.text.trim(),
+      mobileNumber: _mobileController.text.trim(),
+      alternateMobile: _alternateMobileController.text.trim(),
+      areaVillage: _areaVillageController.text.trim(),
+      address: _addressController.text.trim(),
+      course: _course,
+      duration: _durationController.text.trim(),
+      totalFees: totalFees,
+      paidAmount: advancePaid,
+      remainingFees: remainingFees < 0 ? 0 : remainingFees,
+      status: remainingFees > 0 ? 'Pending Payment' : 'Active',
+      preferredBatch: _preferredBatch,
+      startDate: _parseDate(_startDateController.text.trim()),
+      nextPaymentDate: _parseDate(_nextPaymentDateController.text.trim()),
+      createdAt: null,
+      updatedAt: null,
+      notes: _notesController.text.trim(),
+    );
+
+    final provider = context.read<StudentProvider>();
+    final success = await provider.createStudent(student);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Student saved successfully.')),
+      );
+      Navigator.of(context).pushReplacementNamed('/owner/students');
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.errorMessage ?? 'Unable to save student.'),
+      ),
+    );
+  }
+
+  DateTime? _parseDate(String value) {
+    if (value.isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(value);
   }
 }
 
@@ -93,31 +249,80 @@ class _PageHeader extends StatelessWidget {
 }
 
 class _StudentForm extends StatelessWidget {
-  const _StudentForm();
+  final TextEditingController fullNameController;
+  final TextEditingController mobileController;
+  final TextEditingController alternateMobileController;
+  final TextEditingController areaVillageController;
+  final TextEditingController addressController;
+  final TextEditingController durationController;
+  final TextEditingController startDateController;
+  final TextEditingController totalFeesController;
+  final TextEditingController advancePaidController;
+  final TextEditingController remainingFeesController;
+  final TextEditingController nextPaymentDateController;
+  final TextEditingController notesController;
+  final String course;
+  final String preferredBatch;
+  final ValueChanged<String?> onCourseChanged;
+  final ValueChanged<String?> onPreferredBatchChanged;
+
+  const _StudentForm({
+    required this.fullNameController,
+    required this.mobileController,
+    required this.alternateMobileController,
+    required this.areaVillageController,
+    required this.addressController,
+    required this.durationController,
+    required this.startDateController,
+    required this.totalFeesController,
+    required this.advancePaidController,
+    required this.remainingFeesController,
+    required this.nextPaymentDateController,
+    required this.notesController,
+    required this.course,
+    required this.preferredBatch,
+    required this.onCourseChanged,
+    required this.onPreferredBatchChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
+    return Column(
       children: [
         _FormSection(
           title: 'Basic Information',
           subtitle: 'Contact and address details used for daily follow-ups.',
           icon: Icons.person_outline,
           children: [
-            _InputField(label: 'Full Name', icon: Icons.person_outline),
-            _InputField(label: 'Mobile Number', icon: Icons.call_outlined),
+            _InputField(
+              label: 'Full Name',
+              icon: Icons.person_outline,
+              controller: fullNameController,
+              requiredField: true,
+            ),
+            _InputField(
+              label: 'Mobile Number',
+              icon: Icons.call_outlined,
+              controller: mobileController,
+              requiredField: true,
+              keyboardType: TextInputType.phone,
+            ),
             _InputField(
               label: 'Alternate Mobile',
               icon: Icons.phone_android_outlined,
+              controller: alternateMobileController,
               helperText: 'Optional',
+              keyboardType: TextInputType.phone,
             ),
             _InputField(
               label: 'Area / Village',
               icon: Icons.location_on_outlined,
+              controller: areaVillageController,
             ),
             _InputField(
               label: 'Address',
               icon: Icons.home_outlined,
+              controller: addressController,
               maxLines: 3,
               fullWidth: true,
             ),
@@ -129,14 +334,23 @@ class _StudentForm extends StatelessWidget {
           subtitle: 'Batch, duration, and preferred learning time.',
           icon: Icons.directions_car_outlined,
           children: [
-            _CourseDropdown(),
-            _InputField(label: 'Duration', icon: Icons.timer_outlined),
+            _CourseDropdown(value: course, onChanged: onCourseChanged),
+            _InputField(
+              label: 'Duration',
+              icon: Icons.timer_outlined,
+              controller: durationController,
+            ),
             _InputField(
               label: 'Start Date',
               icon: Icons.calendar_today_outlined,
-              helperText: 'Example: 08 May 2026',
+              controller: startDateController,
+              helperText: 'Example: 2026-05-08',
+              keyboardType: TextInputType.datetime,
             ),
-            _TimeSlotDropdown(),
+            _TimeSlotDropdown(
+              value: preferredBatch,
+              onChanged: onPreferredBatchChanged,
+            ),
           ],
         ),
         SizedBox(height: 14),
@@ -147,14 +361,23 @@ class _StudentForm extends StatelessWidget {
           icon: Icons.payments_outlined,
           footer: _PaymentSummaryStrip(),
           children: [
-            _InputField(label: 'Total Fees', icon: Icons.payments_outlined),
+            _InputField(
+              label: 'Total Fees',
+              icon: Icons.payments_outlined,
+              controller: totalFeesController,
+              requiredField: true,
+              keyboardType: TextInputType.number,
+            ),
             _InputField(
               label: 'Advance Paid',
               icon: Icons.account_balance_wallet_outlined,
+              controller: advancePaidController,
+              keyboardType: TextInputType.number,
             ),
             _InputField(
               label: 'Remaining Fees',
               icon: Icons.receipt_long_outlined,
+              controller: remainingFeesController,
               readOnly: true,
               highlighted: true,
               helperText: 'Auto calculated from total fees and advance paid',
@@ -162,7 +385,9 @@ class _StudentForm extends StatelessWidget {
             _InputField(
               label: 'Next Payment Date',
               icon: Icons.event_available_outlined,
+              controller: nextPaymentDateController,
               helperText: 'Optional reminder date',
+              keyboardType: TextInputType.datetime,
             ),
           ],
         ),
@@ -175,6 +400,7 @@ class _StudentForm extends StatelessWidget {
             _InputField(
               label: 'Notes',
               icon: Icons.notes_outlined,
+              controller: notesController,
               maxLines: 4,
               fullWidth: true,
               helperText: 'Optional internal note',
@@ -303,32 +529,45 @@ class _SectionHeader extends StatelessWidget {
 class _InputField extends StatelessWidget {
   final String label;
   final IconData icon;
+  final TextEditingController? controller;
   final int maxLines;
   final bool fullWidth;
   final bool readOnly;
   final bool highlighted;
+  final bool requiredField;
   final String? helperText;
+  final TextInputType? keyboardType;
 
   const _InputField({
     required this.label,
     required this.icon,
+    this.controller,
     this.maxLines = 1,
     this.fullWidth = false,
     this.readOnly = false,
     this.highlighted = false,
+    this.requiredField = false,
     this.helperText,
+    this.keyboardType,
   });
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
+      controller: controller,
       readOnly: readOnly,
       maxLines: maxLines,
-      initialValue: readOnly ? 'Auto calculated' : null,
+      keyboardType: keyboardType,
       style: const TextStyle(
         color: AppColors.textDark,
         fontWeight: FontWeight.w600,
       ),
+      validator: (value) {
+        if (requiredField && (value == null || value.trim().isEmpty)) {
+          return '$label is required';
+        }
+        return null;
+      },
       decoration: InputDecoration(
         labelText: label,
         helperText: helperText,
@@ -358,12 +597,15 @@ class _InputField extends StatelessWidget {
 }
 
 class _CourseDropdown extends StatelessWidget {
-  const _CourseDropdown();
+  final String value;
+  final ValueChanged<String?> onChanged;
+
+  const _CourseDropdown({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: 'Beginner Driving',
+      value: value,
       isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Course',
@@ -387,18 +629,21 @@ class _CourseDropdown extends StatelessWidget {
           child: Text('Licence Assistance'),
         ),
       ],
-      onChanged: (_) {},
+      onChanged: onChanged,
     );
   }
 }
 
 class _TimeSlotDropdown extends StatelessWidget {
-  const _TimeSlotDropdown();
+  final String value;
+  final ValueChanged<String?> onChanged;
+
+  const _TimeSlotDropdown({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: 'Morning Batch',
+      value: value,
       isExpanded: true,
       decoration: const InputDecoration(
         labelText: 'Preferred Time Slot',
@@ -417,7 +662,7 @@ class _TimeSlotDropdown extends StatelessWidget {
         DropdownMenuItem(value: 'Evening Batch', child: Text('Evening Batch')),
         DropdownMenuItem(value: 'Weekend Batch', child: Text('Weekend Batch')),
       ],
-      onChanged: (_) {},
+      onChanged: onChanged,
     );
   }
 }
@@ -518,7 +763,9 @@ class _PaymentSummaryItem extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
-  const _ActionBar();
+  final VoidCallback onSave;
+
+  const _ActionBar({required this.onSave});
 
   @override
   Widget build(BuildContext context) {
@@ -537,13 +784,15 @@ class _ActionBar extends StatelessWidget {
           ),
         ],
       ),
-      child: const _ActionButtons(),
+      child: _ActionButtons(onSave: onSave),
     );
   }
 }
 
 class _ActionButtons extends StatelessWidget {
-  const _ActionButtons();
+  final VoidCallback onSave;
+
+  const _ActionButtons({required this.onSave});
 
   @override
   Widget build(BuildContext context) {
@@ -563,10 +812,18 @@ class _ActionButtons extends StatelessWidget {
             ),
           ),
         );
+        final isLoading = context.watch<StudentProvider>().isLoading;
         final save = FilledButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.save_outlined),
-          label: const Text('Save Student'),
+          onPressed: isLoading ? null : onSave,
+          icon:
+              isLoading
+                  ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                  : const Icon(Icons.save_outlined),
+          label: Text(isLoading ? 'Saving...' : 'Save Student'),
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,

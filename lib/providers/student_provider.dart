@@ -1,15 +1,63 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/student_model.dart';
+import '../services/student_service.dart';
+
 /// Manages student list state for owner screens.
-/// Backend data can replace the placeholder list later.
+/// Student screens read from here while Supabase access stays in the service.
 class StudentProvider extends ChangeNotifier {
-  final List<String> _students = ['Amit Sharma', 'Neha Singh'];
+  final StudentService _studentService;
 
-  List<String> get students => List.unmodifiable(_students);
+  StudentProvider({StudentService? studentService})
+    : _studentService = studentService ?? StudentService();
 
-  void addStudent(String name) {
-    _students.add(name);
+  final List<StudentModel> _students = [];
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  List<StudentModel> get students => List.unmodifiable(_students);
+  bool get isLoading => _isLoading;
+  String? get errorMessage => _errorMessage;
+
+  Future<bool> fetchStudents() async {
+    _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
+
+    try {
+      final fetchedStudents = await _studentService.fetchStudents();
+      _students
+        ..clear()
+        ..addAll(fetchedStudents);
+      return true;
+    } catch (error) {
+      _errorMessage = 'Unable to load students. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> createStudent(StudentModel student) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _studentService.createStudent(student);
+      final fetchedStudents = await _studentService.fetchStudents();
+      _students
+        ..clear()
+        ..addAll(fetchedStudents);
+      return true;
+    } catch (error) {
+      _errorMessage = 'Unable to save student. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   void clearStudents() {

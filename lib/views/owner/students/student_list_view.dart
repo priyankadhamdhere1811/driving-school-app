@@ -1,49 +1,32 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/student_model.dart';
+import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
 import '../../../widgets/owner/owner_search_filter_bar.dart';
 import '../../../widgets/owner/owner_status_badge.dart';
 
-class StudentListView extends StatelessWidget {
+class StudentListView extends StatefulWidget {
   const StudentListView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final students = [
-      const _StudentData(
-        name: 'Amit Sharma',
-        mobile: '+91 98765 11111',
-        area: 'Main Road',
-        course: 'Beginner Driving',
-        duration: '30 days',
-        totalFees: 'Rs 5,000',
-        remainingFees: 'Rs 0',
-        status: 'Active',
-      ),
-      const _StudentData(
-        name: 'Neha Singh',
-        mobile: '+91 98765 22222',
-        area: 'Market Area',
-        course: 'Advanced Course',
-        duration: '15 days',
-        totalFees: 'Rs 3,500',
-        remainingFees: 'Rs 1,000',
-        status: 'Pending Payment',
-      ),
-      const _StudentData(
-        name: 'Vikram Patel',
-        mobile: '+91 98765 33333',
-        area: 'Station Road',
-        course: 'Licence Assistance',
-        duration: '20 days',
-        totalFees: 'Rs 4,500',
-        remainingFees: 'Rs 0',
-        status: 'Completed',
-      ),
-    ];
+  State<StudentListView> createState() => _StudentListViewState();
+}
 
+class _StudentListViewState extends State<StudentListView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<StudentProvider>().fetchStudents();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: AppSpacing.ownerPagePadding,
       child: Center(
@@ -62,13 +45,36 @@ class StudentListView extends StatelessWidget {
                 breakpoint: 520,
               ),
               const SizedBox(height: AppSpacing.sectionX),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  if (constraints.maxWidth >= 900) {
-                    return _StudentTable(students: students);
+              Consumer<StudentProvider>(
+                builder: (context, studentProvider, child) {
+                  if (studentProvider.isLoading) {
+                    return const _LoadingState();
                   }
 
-                  return _StudentCardsList(students: students);
+                  if (studentProvider.errorMessage != null) {
+                    return _MessageState(
+                      icon: Icons.error_outline,
+                      message: studentProvider.errorMessage!,
+                    );
+                  }
+
+                  final students = studentProvider.students;
+                  if (students.isEmpty) {
+                    return const _MessageState(
+                      icon: Icons.people_outline,
+                      message: 'No students found.',
+                    );
+                  }
+
+                  return LayoutBuilder(
+                    builder: (context, constraints) {
+                      if (constraints.maxWidth >= 900) {
+                        return _StudentTable(students: students);
+                      }
+
+                      return _StudentCardsList(students: students);
+                    },
+                  );
                 },
               ),
             ],
@@ -80,7 +86,7 @@ class StudentListView extends StatelessWidget {
 }
 
 class _StudentCardsList extends StatelessWidget {
-  final List<_StudentData> students;
+  final List<StudentModel> students;
 
   const _StudentCardsList({required this.students});
 
@@ -163,7 +169,7 @@ class _PageHeader extends StatelessWidget {
 }
 
 class _StudentTable extends StatelessWidget {
-  final List<_StudentData> students;
+  final List<StudentModel> students;
 
   const _StudentTable({required this.students});
 
@@ -196,14 +202,16 @@ class _StudentTable extends StatelessWidget {
                   .map(
                     (student) => DataRow(
                       cells: [
-                        DataCell(Text(student.name)),
-                        DataCell(Text(student.mobile)),
-                        DataCell(Text(student.area)),
+                        DataCell(Text(student.fullName)),
+                        DataCell(Text(student.mobileNumber)),
+                        DataCell(Text(student.areaVillage)),
                         DataCell(Text(student.course)),
                         DataCell(Text(student.duration)),
-                        DataCell(Text(student.totalFees)),
-                        DataCell(Text(student.remainingFees)),
-                        DataCell(OwnerStatusBadge(status: student.status)),
+                        DataCell(Text(student.totalFeesText)),
+                        DataCell(Text(student.remainingFeesText)),
+                        DataCell(
+                          OwnerStatusBadge(status: student.displayStatus),
+                        ),
                       ],
                     ),
                   )
@@ -215,7 +223,7 @@ class _StudentTable extends StatelessWidget {
 }
 
 class _StudentCard extends StatelessWidget {
-  final _StudentData student;
+  final StudentModel student;
 
   const _StudentCard({required this.student});
 
@@ -235,23 +243,66 @@ class _StudentCard extends StatelessWidget {
             crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               Text(
-                student.name,
+                student.fullName,
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color: AppColors.textDark,
                 ),
               ),
-              OwnerStatusBadge(status: student.status),
+              OwnerStatusBadge(status: student.displayStatus),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          _InfoLine('Mobile', student.mobile),
-          _InfoLine('Area', student.area),
+          _InfoLine('Mobile', student.mobileNumber),
+          _InfoLine('Area', student.areaVillage),
           _InfoLine('Course', student.course),
           _InfoLine('Duration', student.duration),
-          _InfoLine('Total Fees', student.totalFees),
-          _InfoLine('Remaining Fees', student.remainingFees),
+          _InfoLine('Total Fees', student.totalFeesText),
+          _InfoLine('Remaining Fees', student.remainingFeesText),
+        ],
+      ),
+    );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: _cardDecoration(),
+      child: const Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final IconData icon;
+  final String message;
+
+  const _MessageState({required this.icon, required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSpacing.card),
+      decoration: _cardDecoration(),
+      child: Column(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 32),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -330,26 +381,4 @@ BoxDecoration _cardDecoration({
       ),
     ],
   );
-}
-
-class _StudentData {
-  final String name;
-  final String mobile;
-  final String area;
-  final String course;
-  final String duration;
-  final String totalFees;
-  final String remainingFees;
-  final String status;
-
-  const _StudentData({
-    required this.name,
-    required this.mobile,
-    required this.area,
-    required this.course,
-    required this.duration,
-    required this.totalFees,
-    required this.remainingFees,
-    required this.status,
-  });
 }
