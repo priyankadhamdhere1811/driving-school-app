@@ -105,11 +105,15 @@ class StudentModel {
   String get remainingFeesText => _formatAmount(remainingFees);
 
   String get displayStatus {
-    if (status.isNotEmpty) {
-      return status;
+    if (remainingFees == 0) {
+      return 'Completed';
     }
 
-    return remainingFees > 0 ? 'Pending Payment' : 'Active';
+    if (paidAmount == 0) {
+      return 'Pending Payment';
+    }
+
+    return 'Active';
   }
 
   static String _readString(
