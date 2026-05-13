@@ -66,7 +66,7 @@ class _StudentDetailsViewState extends State<StudentDetailsView> {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _HeaderSection(student: student),
+                  _HeaderSection(student: student, studentId: widget.studentId),
                   const SizedBox(height: AppSpacing.sectionX),
                   _QuickStatsRow(student: student),
                   const SizedBox(height: AppSpacing.sectionX),
@@ -121,8 +121,9 @@ class _StateCard extends StatelessWidget {
 
 class _HeaderSection extends StatelessWidget {
   final _StudentDetails student;
+  final String studentId;
 
-  const _HeaderSection({required this.student});
+  const _HeaderSection({required this.student, required this.studentId});
 
   @override
   Widget build(BuildContext context) {
@@ -181,7 +182,7 @@ class _HeaderSection extends StatelessWidget {
               ),
               SizedBox(
                 width: isNarrow ? constraints.maxWidth : 320,
-                child: _HeaderActions(isNarrow: isNarrow),
+                child: _HeaderActions(isNarrow: isNarrow, studentId: studentId),
               ),
             ],
           );
@@ -193,13 +194,18 @@ class _HeaderSection extends StatelessWidget {
 
 class _HeaderActions extends StatelessWidget {
   final bool isNarrow;
+  final String studentId;
 
-  const _HeaderActions({required this.isNarrow});
+  const _HeaderActions({required this.isNarrow, required this.studentId});
 
   @override
   Widget build(BuildContext context) {
     final edit = OutlinedButton.icon(
-      onPressed: () {},
+      onPressed: () {
+        Navigator.of(
+          context,
+        ).pushNamed('/owner/students/${Uri.encodeComponent(studentId)}/edit');
+      },
       icon: const Icon(Icons.edit_outlined),
       label: const Text('Edit Student'),
       style: _outlinedButtonStyle(),

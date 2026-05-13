@@ -62,6 +62,30 @@ class StudentProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateStudent(String id, StudentModel student) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final updatedStudent = await _studentService.updateStudent(id, student);
+      _selectedStudent = updatedStudent;
+      final index = _students.indexWhere((item) => item.id == id);
+      if (index == -1) {
+        _students.add(updatedStudent);
+      } else {
+        _students[index] = updatedStudent;
+      }
+      return true;
+    } catch (error) {
+      _errorMessage = 'Unable to update student. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> fetchStudentById(String id) async {
     _isLoading = true;
     _errorMessage = null;

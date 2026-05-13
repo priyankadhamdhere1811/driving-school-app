@@ -37,4 +37,16 @@ class StudentService {
 
     return StudentModel.fromJson(Map<String, dynamic>.from(response));
   }
+
+  Future<StudentModel> updateStudent(String id, StudentModel student) async {
+    final response =
+        await _client
+            .from('students')
+            .update(student.toJson())
+            .eq('id', id)
+            .select()
+            .single();
+
+    return StudentModel.fromJson(Map<String, dynamic>.from(response));
+  }
 }

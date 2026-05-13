@@ -5,6 +5,7 @@ import '../views/owner/layout/owner_layout.dart';
 import '../views/owner/owner_dashboard_view.dart';
 import '../views/owner/payments/payments_view.dart';
 import '../views/owner/students/add_student_view.dart';
+import '../views/owner/students/edit_student_view.dart';
 import '../views/owner/students/student_details_view.dart';
 import '../views/owner/students/student_list_view.dart';
 import '../views/public/home_view.dart';
@@ -15,6 +16,7 @@ class AppRoutes {
   static const ownerStudents = '/owner/students';
   static const addStudent = '/owner/students/add';
   static const studentDetails = '/owner/students/:id';
+  static const editStudent = '/owner/students/:id/edit';
   static const payments = '/owner/payments';
   static const attendance = '/owner/attendance';
   static const enquiries = '/owner/enquiries';
@@ -61,6 +63,22 @@ class AppRoutes {
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? '');
+
+    if (uri.pathSegments.length == 4 &&
+        uri.pathSegments[0] == 'owner' &&
+        uri.pathSegments[1] == 'students' &&
+        uri.pathSegments[3] == 'edit') {
+      final studentId = Uri.decodeComponent(uri.pathSegments[2]);
+
+      return MaterialPageRoute(
+        settings: settings,
+        builder:
+            (context) => OwnerLayout(
+              title: 'Edit Student',
+              child: EditStudentView(studentId: studentId),
+            ),
+      );
+    }
 
     if (uri.pathSegments.length == 3 &&
         uri.pathSegments[0] == 'owner' &&
