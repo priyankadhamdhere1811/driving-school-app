@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../models/payment_model.dart';
 import '../../../models/student_model.dart';
+import '../../../providers/payment_provider.dart';
 import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
@@ -17,13 +19,14 @@ class StudentDetailsView extends StatefulWidget {
 }
 
 class _StudentDetailsViewState extends State<StudentDetailsView> {
-  static const _payments = <_PaymentRecord>[];
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<StudentProvider>().fetchStudentById(widget.studentId);
+      context.read<PaymentProvider>().fetchPaymentsByStudentId(
+        widget.studentId,
+      );
     });
   }
 
@@ -36,8 +39,8 @@ class _StudentDetailsViewState extends State<StudentDetailsView> {
           constraints: const BoxConstraints(
             maxWidth: AppSpacing.ownerCompactMaxContentWidth,
           ),
-          child: Consumer<StudentProvider>(
-            builder: (context, studentProvider, child) {
+          child: Consumer2<StudentProvider, PaymentProvider>(
+            builder: (context, studentProvider, paymentProvider, child) {
               if (studentProvider.isLoading) {
                 return const _StateCard(
                   icon: Icons.hourglass_empty,
@@ -62,6 +65,10 @@ class _StudentDetailsViewState extends State<StudentDetailsView> {
               }
 
               final student = _StudentDetails.fromStudent(selectedStudent);
+              final payments =
+                  paymentProvider.payments
+                      .map(_PaymentRecord.fromPayment)
+                      .toList();
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -70,7 +77,12 @@ class _StudentDetailsViewState extends State<StudentDetailsView> {
                   const SizedBox(height: AppSpacing.sectionX),
                   _QuickStatsRow(student: student),
                   const SizedBox(height: AppSpacing.sectionX),
-                  _MainSections(student: student, payments: _payments),
+                  _MainSections(
+                    student: student,
+                    payments: payments,
+                    isPaymentLoading: paymentProvider.isLoading,
+                    paymentErrorMessage: paymentProvider.errorMessage,
+                  ),
                   const SizedBox(height: AppSpacing.sectionX),
                   const _BottomActions(),
                 ],
@@ -328,8 +340,15 @@ class _StatCard extends StatelessWidget {
 class _MainSections extends StatelessWidget {
   final _StudentDetails student;
   final List<_PaymentRecord> payments;
+  final bool isPaymentLoading;
+  final String? paymentErrorMessage;
 
-  const _MainSections({required this.student, required this.payments});
+  const _MainSections({
+    required this.student,
+    required this.payments,
+    required this.isPaymentLoading,
+    required this.paymentErrorMessage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -345,7 +364,11 @@ class _MainSections extends StatelessWidget {
         );
         final rightColumn = Column(
           children: [
-            _PaymentHistorySection(payments: payments),
+            _PaymentHistorySection(
+              payments: payments,
+              isLoading: isPaymentLoading,
+              errorMessage: paymentErrorMessage,
+            ),
             const SizedBox(height: AppSpacing.sectionX),
             _AttendanceSection(student: student),
           ],
@@ -401,8 +424,14 @@ class _InformationSection extends StatelessWidget {
 
 class _PaymentHistorySection extends StatelessWidget {
   final List<_PaymentRecord> payments;
+  final bool isLoading;
+  final String? errorMessage;
 
-  const _PaymentHistorySection({required this.payments});
+  const _PaymentHistorySection({
+    required this.payments,
+    required this.isLoading,
+    required this.errorMessage,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -411,6 +440,16 @@ class _PaymentHistorySection extends StatelessWidget {
       icon: Icons.account_balance_wallet_outlined,
       child: LayoutBuilder(
         builder: (context, constraints) {
+          if (isLoading) {
+            return const _InlineLoadingMessage(
+              message: 'Loading payment history...',
+            );
+          }
+
+          if (errorMessage != null) {
+            return _EmptySectionMessage(message: errorMessage!);
+          }
+
           if (payments.isEmpty) {
             return const _EmptySectionMessage(
               message: 'No payment records found.',
@@ -438,7 +477,7 @@ class _PaymentHistorySection extends StatelessWidget {
                 DataColumn(label: Text('Date')),
                 DataColumn(label: Text('Amount')),
                 DataColumn(label: Text('Method')),
-                DataColumn(label: Text('Status')),
+                DataColumn(label: Text('Notes')),
               ],
               rows:
                   payments
@@ -448,7 +487,7 @@ class _PaymentHistorySection extends StatelessWidget {
                             DataCell(Text(payment.date)),
                             DataCell(Text(payment.amount)),
                             DataCell(Text(payment.method)),
-                            DataCell(_StatusBadge(status: payment.status)),
+                            DataCell(Text(payment.notes)),
                           ],
                         ),
                       )
@@ -554,6 +593,35 @@ class _EmptySectionMessage extends StatelessWidget {
         color: AppColors.textGray,
         fontWeight: FontWeight.w700,
       ),
+    );
+  }
+}
+
+class _InlineLoadingMessage extends StatelessWidget {
+  final String message;
+
+  const _InlineLoadingMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        Expanded(
+          child: Text(
+            message,
+            style: const TextStyle(
+              color: AppColors.textGray,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -730,14 +798,27 @@ class _PaymentListTile extends StatelessWidget {
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              _StatusBadge(status: payment.status),
+              Text(
+                payment.method,
+                style: const TextStyle(
+                  color: AppColors.textGray,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: AppSpacing.sm),
           Text(
-            '${payment.amount} - ${payment.method}',
+            payment.amount,
             style: const TextStyle(color: AppColors.textGray),
           ),
+          if (payment.notes.isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              payment.notes,
+              style: const TextStyle(color: AppColors.textGray),
+            ),
+          ],
         ],
       ),
     );
@@ -1029,9 +1110,18 @@ class _PaymentRecord {
   final String date;
   final String amount;
   final String method;
-  final String status;
+  final String notes;
 
-  const _PaymentRecord(this.date, this.amount, this.method, this.status);
+  const _PaymentRecord(this.date, this.amount, this.method, this.notes);
+
+  factory _PaymentRecord.fromPayment(PaymentModel payment) {
+    return _PaymentRecord(
+      _formatDate(payment.paymentDate),
+      payment.amountText,
+      _valueOrDash(payment.paymentMethod),
+      payment.notes.trim(),
+    );
+  }
 }
 
 class _StatData {
