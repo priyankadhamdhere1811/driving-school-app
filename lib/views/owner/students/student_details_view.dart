@@ -1,40 +1,31 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/student_model.dart';
+import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
 
-class StudentDetailsView extends StatelessWidget {
-  const StudentDetailsView({super.key});
+class StudentDetailsView extends StatefulWidget {
+  final String studentId;
 
-  static const _student = _StudentDetails(
-    initials: 'AS',
-    name: 'Amit Sharma',
-    course: 'Beginner Driving',
-    status: 'Active',
-    mobile: '+91 98765 11111',
-    alternateMobile: '+91 98765 22222',
-    area: 'Main Road',
-    address: '24, Shanti Nagar, Near City Hospital, Main Road',
-    startDate: '08 May 2026',
-    duration: '30 days',
-    preferredBatch: 'Morning Batch',
-    totalFees: 'Rs 5,000',
-    paidAmount: 'Rs 2,000',
-    remainingFees: 'Rs 3,000',
-    attendancePercent: '82%',
-    classesAttended: '18',
-    missedClasses: '4',
-    notes:
-        'Prefers morning practice sessions. Needs extra attention during reverse parking and slope start practice.',
-  );
+  const StudentDetailsView({super.key, required this.studentId});
 
-  static const _payments = [
-    _PaymentRecord('08 May 2026', 'Rs 1,000', 'Cash', 'Paid'),
-    _PaymentRecord('12 May 2026', 'Rs 500', 'UPI', 'Paid'),
-    _PaymentRecord('18 May 2026', 'Rs 500', 'Cash', 'Paid'),
-    _PaymentRecord('25 May 2026', 'Rs 3,000', 'UPI', 'Pending'),
-  ];
+  @override
+  State<StudentDetailsView> createState() => _StudentDetailsViewState();
+}
+
+class _StudentDetailsViewState extends State<StudentDetailsView> {
+  static const _payments = <_PaymentRecord>[];
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<StudentProvider>().fetchStudentById(widget.studentId);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,18 +36,83 @@ class StudentDetailsView extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: AppSpacing.ownerCompactMaxContentWidth,
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _HeaderSection(student: _student),
-              SizedBox(height: AppSpacing.sectionX),
-              _QuickStatsRow(student: _student),
-              SizedBox(height: AppSpacing.sectionX),
-              _MainSections(student: _student, payments: _payments),
-              SizedBox(height: AppSpacing.sectionX),
-              _BottomActions(),
-            ],
+          child: Consumer<StudentProvider>(
+            builder: (context, studentProvider, child) {
+              if (studentProvider.isLoading) {
+                return const _StateCard(
+                  icon: Icons.hourglass_empty,
+                  message: 'Loading student details...',
+                  showLoader: true,
+                );
+              }
+
+              if (studentProvider.errorMessage != null) {
+                return _StateCard(
+                  icon: Icons.error_outline,
+                  message: studentProvider.errorMessage!,
+                );
+              }
+
+              final selectedStudent = studentProvider.selectedStudent;
+              if (selectedStudent == null) {
+                return const _StateCard(
+                  icon: Icons.person_off_outlined,
+                  message: 'Student details not found.',
+                );
+              }
+
+              final student = _StudentDetails.fromStudent(selectedStudent);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _HeaderSection(student: student),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _QuickStatsRow(student: student),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _MainSections(student: student, payments: _payments),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const _BottomActions(),
+                ],
+              );
+            },
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _StateCard extends StatelessWidget {
+  final IconData icon;
+  final String message;
+  final bool showLoader;
+
+  const _StateCard({
+    required this.icon,
+    required this.message,
+    this.showLoader = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      child: Center(
+        child: Column(
+          children: [
+            if (showLoader)
+              const CircularProgressIndicator()
+            else
+              Icon(icon, color: AppColors.primary, size: 34),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -349,6 +405,12 @@ class _PaymentHistorySection extends StatelessWidget {
       icon: Icons.account_balance_wallet_outlined,
       child: LayoutBuilder(
         builder: (context, constraints) {
+          if (payments.isEmpty) {
+            return const _EmptySectionMessage(
+              message: 'No payment records found.',
+            );
+          }
+
           if (constraints.maxWidth < 560) {
             return Column(
               children:
@@ -423,11 +485,13 @@ class _AttendanceSection extends StatelessWidget {
           const SizedBox(height: AppSpacing.xl),
           ClipRRect(
             borderRadius: BorderRadius.circular(999),
-            child: const LinearProgressIndicator(
-              value: 0.82,
+            child: LinearProgressIndicator(
+              value: student.attendanceProgress,
               minHeight: 10,
               backgroundColor: AppColors.ownerTint,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                AppColors.primary,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.sm),
@@ -456,13 +520,33 @@ class _NotesSection extends StatelessWidget {
     return _SectionCard(
       title: 'Notes',
       icon: Icons.notes_outlined,
-      child: Text(
-        notes,
-        style: const TextStyle(
-          color: AppColors.textDark,
-          height: 1.5,
-          fontWeight: FontWeight.w600,
-        ),
+      child:
+          notes.isEmpty
+              ? const _EmptySectionMessage(message: 'No notes added.')
+              : Text(
+                notes,
+                style: const TextStyle(
+                  color: AppColors.textDark,
+                  height: 1.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+    );
+  }
+}
+
+class _EmptySectionMessage extends StatelessWidget {
+  final String message;
+
+  const _EmptySectionMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: const TextStyle(
+        color: AppColors.textGray,
+        fontWeight: FontWeight.w700,
       ),
     );
   }
@@ -841,6 +925,7 @@ class _StudentDetails {
   final String paidAmount;
   final String remainingFees;
   final String attendancePercent;
+  final double attendanceProgress;
   final String classesAttended;
   final String missedClasses;
   final String notes;
@@ -861,10 +946,77 @@ class _StudentDetails {
     required this.paidAmount,
     required this.remainingFees,
     required this.attendancePercent,
+    required this.attendanceProgress,
     required this.classesAttended,
     required this.missedClasses,
     required this.notes,
   });
+
+  factory _StudentDetails.fromStudent(StudentModel student) {
+    return _StudentDetails(
+      initials: _initialsFor(student.fullName),
+      name: _valueOrDash(student.fullName),
+      course: _valueOrDash(student.course),
+      status: student.displayStatus,
+      mobile: _valueOrDash(student.mobileNumber),
+      alternateMobile: _valueOrDash(student.alternateMobile),
+      area: _valueOrDash(student.areaVillage),
+      address: _valueOrDash(student.address),
+      startDate: _formatDate(student.startDate),
+      duration: _valueOrDash(student.duration),
+      preferredBatch: _valueOrDash(student.preferredBatch),
+      totalFees: student.totalFeesText,
+      paidAmount: student.paidAmountText,
+      remainingFees: student.remainingFeesText,
+      attendancePercent: '0%',
+      attendanceProgress: 0,
+      classesAttended: '0',
+      missedClasses: '0',
+      notes: student.notes.trim(),
+    );
+  }
+}
+
+String _initialsFor(String name) {
+  final words = name.trim().split(RegExp(r'\s+'));
+  final initials =
+      words
+          .where((word) => word.isNotEmpty)
+          .take(2)
+          .map((word) => word[0].toUpperCase())
+          .join();
+
+  return initials.isEmpty ? '?' : initials;
+}
+
+String _valueOrDash(String value) {
+  final trimmedValue = value.trim();
+  return trimmedValue.isEmpty ? '-' : trimmedValue;
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) {
+    return '-';
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  final day = date.day.toString().padLeft(2, '0');
+  final month = months[date.month - 1];
+  return '$day $month ${date.year}';
 }
 
 class _PaymentRecord {

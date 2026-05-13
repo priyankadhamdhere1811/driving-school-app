@@ -53,6 +53,7 @@ class DrivingSchoolApp extends StatelessWidget {
       ),
       initialRoute: AppRoutes.home,
       routes: AppRoutes.routes,
+      onGenerateRoute: AppRoutes.onGenerateRoute,
     );
   }
 }

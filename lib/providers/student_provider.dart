@@ -12,10 +12,12 @@ class StudentProvider extends ChangeNotifier {
     : _studentService = studentService ?? StudentService();
 
   final List<StudentModel> _students = [];
+  StudentModel? _selectedStudent;
   bool _isLoading = false;
   String? _errorMessage;
 
   List<StudentModel> get students => List.unmodifiable(_students);
+  StudentModel? get selectedStudent => _selectedStudent;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -53,6 +55,24 @@ class StudentProvider extends ChangeNotifier {
       return true;
     } catch (error) {
       _errorMessage = 'Unable to save student. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> fetchStudentById(String id) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _selectedStudent = null;
+    notifyListeners();
+
+    try {
+      _selectedStudent = await _studentService.fetchStudentById(id);
+      return _selectedStudent != null;
+    } catch (error) {
+      _errorMessage = 'Unable to load student details. Please try again.';
       return false;
     } finally {
       _isLoading = false;

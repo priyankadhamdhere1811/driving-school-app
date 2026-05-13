@@ -16,6 +16,17 @@ class StudentService {
         .toList();
   }
 
+  Future<StudentModel?> fetchStudentById(String id) async {
+    final response =
+        await _client.from('students').select().eq('id', id).maybeSingle();
+
+    if (response == null) {
+      return null;
+    }
+
+    return StudentModel.fromMap(Map<String, dynamic>.from(response));
+  }
+
   Future<StudentModel> createStudent(StudentModel student) async {
     final response =
         await _client

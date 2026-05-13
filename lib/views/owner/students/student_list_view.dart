@@ -202,15 +202,37 @@ class _StudentTable extends StatelessWidget {
                   .map(
                     (student) => DataRow(
                       cells: [
-                        DataCell(Text(student.fullName)),
-                        DataCell(Text(student.mobileNumber)),
-                        DataCell(Text(student.areaVillage)),
-                        DataCell(Text(student.course)),
-                        DataCell(Text(student.duration)),
-                        DataCell(Text(student.totalFeesText)),
-                        DataCell(Text(student.remainingFeesText)),
+                        DataCell(
+                          Text(student.fullName),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.mobileNumber),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.areaVillage),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.course),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.duration),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.totalFeesText),
+                          onTap: () => _openStudent(context, student),
+                        ),
+                        DataCell(
+                          Text(student.remainingFeesText),
+                          onTap: () => _openStudent(context, student),
+                        ),
                         DataCell(
                           OwnerStatusBadge(status: student.displayStatus),
+                          onTap: () => _openStudent(context, student),
                         ),
                       ],
                     ),
@@ -229,41 +251,54 @@ class _StudentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: _cardDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Wrap(
-            spacing: AppSpacing.sm,
-            runSpacing: AppSpacing.sm,
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: AppSpacing.ownerCardRadius,
+        onTap: () => _openStudent(context, student),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: _cardDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                student.fullName,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textDark,
-                ),
+              Wrap(
+                spacing: AppSpacing.sm,
+                runSpacing: AppSpacing.sm,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text(
+                    student.fullName,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
+                    ),
+                  ),
+                  OwnerStatusBadge(status: student.displayStatus),
+                ],
               ),
-              OwnerStatusBadge(status: student.displayStatus),
+              const SizedBox(height: AppSpacing.md),
+              _InfoLine('Mobile', student.mobileNumber),
+              _InfoLine('Area', student.areaVillage),
+              _InfoLine('Course', student.course),
+              _InfoLine('Duration', student.duration),
+              _InfoLine('Total Fees', student.totalFeesText),
+              _InfoLine('Remaining Fees', student.remainingFeesText),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          _InfoLine('Mobile', student.mobileNumber),
-          _InfoLine('Area', student.areaVillage),
-          _InfoLine('Course', student.course),
-          _InfoLine('Duration', student.duration),
-          _InfoLine('Total Fees', student.totalFeesText),
-          _InfoLine('Remaining Fees', student.remainingFeesText),
-        ],
+        ),
       ),
     );
   }
+}
+
+void _openStudent(BuildContext context, StudentModel student) {
+  Navigator.of(
+    context,
+  ).pushNamed('/owner/students/${Uri.encodeComponent(student.id)}');
 }
 
 class _LoadingState extends StatelessWidget {

@@ -14,7 +14,7 @@ class AppRoutes {
   static const ownerDashboard = '/owner/dashboard';
   static const ownerStudents = '/owner/students';
   static const addStudent = '/owner/students/add';
-  static const studentDetails = '/owner/students/details';
+  static const studentDetails = '/owner/students/:id';
   static const payments = '/owner/payments';
   static const attendance = '/owner/attendance';
   static const enquiries = '/owner/enquiries';
@@ -35,11 +35,6 @@ class AppRoutes {
       addStudent:
           (context) =>
               const OwnerLayout(title: 'Add Student', child: AddStudentView()),
-      studentDetails:
-          (context) => const OwnerLayout(
-            title: 'Student Details',
-            child: StudentDetailsView(),
-          ),
       payments:
           (context) =>
               const OwnerLayout(title: 'Payments', child: PaymentsView()),
@@ -62,6 +57,38 @@ class AppRoutes {
             child: _OwnerPlaceholder(title: 'Settings'),
           ),
     };
+  }
+
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    final uri = Uri.parse(settings.name ?? '');
+
+    if (uri.pathSegments.length == 3 &&
+        uri.pathSegments[0] == 'owner' &&
+        uri.pathSegments[1] == 'students') {
+      final studentId = Uri.decodeComponent(uri.pathSegments[2]);
+
+      if (studentId == 'add') {
+        return MaterialPageRoute(
+          settings: settings,
+          builder:
+              (context) => const OwnerLayout(
+                title: 'Add Student',
+                child: AddStudentView(),
+              ),
+        );
+      }
+
+      return MaterialPageRoute(
+        settings: settings,
+        builder:
+            (context) => OwnerLayout(
+              title: 'Student Details',
+              child: StudentDetailsView(studentId: studentId),
+            ),
+      );
+    }
+
+    return null;
   }
 }
 
