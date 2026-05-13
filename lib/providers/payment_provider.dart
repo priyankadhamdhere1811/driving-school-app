@@ -45,6 +45,30 @@ class PaymentProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> createPayment(PaymentModel payment) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      await _paymentService.createPayment(payment);
+      final fetchedPayments = await _paymentService.fetchPaymentsByStudentId(
+        payment.studentId,
+      );
+      _payments
+        ..clear()
+        ..addAll(fetchedPayments);
+      _paymentCount = _payments.length;
+      return true;
+    } catch (error) {
+      _errorMessage = 'Unable to save payment. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   void addPayment() {
     _paymentCount++;
     notifyListeners();

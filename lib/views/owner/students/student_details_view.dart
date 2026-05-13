@@ -223,7 +223,7 @@ class _HeaderActions extends StatelessWidget {
       style: _outlinedButtonStyle(),
     );
     final payment = FilledButton.icon(
-      onPressed: () {},
+      onPressed: () => _showRecordPaymentDialog(context, studentId),
       icon: const Icon(Icons.payments_outlined),
       label: const Text('Record Payment'),
       style: _filledButtonStyle(AppColors.primary),
@@ -244,6 +244,237 @@ class _HeaderActions extends StatelessWidget {
         SizedBox(width: 142, child: edit),
         SizedBox(width: 166, child: payment),
       ],
+    );
+  }
+}
+
+Future<void> _showRecordPaymentDialog(
+  BuildContext context,
+  String studentId,
+) async {
+  await showDialog<void>(
+    context: context,
+    builder: (context) => _RecordPaymentDialog(studentId: studentId),
+  );
+}
+
+class _RecordPaymentDialog extends StatefulWidget {
+  final String studentId;
+
+  const _RecordPaymentDialog({required this.studentId});
+
+  @override
+  State<_RecordPaymentDialog> createState() => _RecordPaymentDialogState();
+}
+
+class _RecordPaymentDialogState extends State<_RecordPaymentDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _amountController = TextEditingController();
+  final _paymentDateController = TextEditingController(
+    text: DateTime.now().toIso8601String().split('T').first,
+  );
+  final _notesController = TextEditingController();
+  String _paymentMethod = 'Cash';
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    _paymentDateController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isLoading = context.watch<PaymentProvider>().isLoading;
+
+    return AlertDialog(
+      title: const Text('Record Payment'),
+      content: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _PaymentInputField(
+                label: 'Amount',
+                icon: Icons.payments_outlined,
+                controller: _amountController,
+                keyboardType: TextInputType.number,
+                requiredField: true,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              DropdownButtonFormField<String>(
+                value: _paymentMethod,
+                isExpanded: true,
+                decoration: const InputDecoration(
+                  labelText: 'Payment Method',
+                  prefixIcon: Icon(Icons.account_balance_wallet_outlined),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: AppSpacing.lg,
+                    vertical: AppSpacing.md,
+                  ),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Cash', child: Text('Cash')),
+                  DropdownMenuItem(value: 'UPI', child: Text('UPI')),
+                  DropdownMenuItem(value: 'Card', child: Text('Card')),
+                  DropdownMenuItem(
+                    value: 'Bank Transfer',
+                    child: Text('Bank Transfer'),
+                  ),
+                ],
+                onChanged: (value) {
+                  if (value != null) {
+                    setState(() => _paymentMethod = value);
+                  }
+                },
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _PaymentInputField(
+                label: 'Payment Date',
+                icon: Icons.calendar_today_outlined,
+                controller: _paymentDateController,
+                helperText: 'Example: 2026-05-13',
+                keyboardType: TextInputType.datetime,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _PaymentInputField(
+                label: 'Notes',
+                icon: Icons.notes_outlined,
+                controller: _notesController,
+                maxLines: 3,
+                helperText: 'Optional',
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        OutlinedButton(
+          onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: isLoading ? null : _savePayment,
+          icon:
+              isLoading
+                  ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                  : const Icon(Icons.save_outlined),
+          label: Text(isLoading ? 'Saving...' : 'Save Payment'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _savePayment() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    final amount = num.tryParse(_amountController.text.trim()) ?? 0;
+    if (amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Amount must be greater than 0.')),
+      );
+      return;
+    }
+
+    final payment = PaymentModel(
+      id: '',
+      studentId: widget.studentId,
+      amount: amount,
+      paymentMethod: _paymentMethod,
+      paymentDate: _parseDate(_paymentDateController.text.trim()),
+      notes: _notesController.text.trim(),
+    );
+
+    final provider = context.read<PaymentProvider>();
+    final success = await provider.createPayment(payment);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment recorded successfully.')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.errorMessage ?? 'Unable to save payment.'),
+      ),
+    );
+  }
+
+  DateTime? _parseDate(String value) {
+    if (value.isEmpty) {
+      return null;
+    }
+
+    return DateTime.tryParse(value);
+  }
+}
+
+class _PaymentInputField extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final TextEditingController controller;
+  final int maxLines;
+  final bool requiredField;
+  final String? helperText;
+  final TextInputType? keyboardType;
+
+  const _PaymentInputField({
+    required this.label,
+    required this.icon,
+    required this.controller,
+    this.maxLines = 1,
+    this.requiredField = false,
+    this.helperText,
+    this.keyboardType,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      validator: (value) {
+        if (requiredField && (value == null || value.trim().isEmpty)) {
+          return '$label is required';
+        }
+
+        return null;
+      },
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.lg,
+          vertical: AppSpacing.md,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: AppSpacing.radiusMd,
+          borderSide: const BorderSide(color: AppColors.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: AppSpacing.radiusMd,
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+        ),
+      ),
     );
   }
 }

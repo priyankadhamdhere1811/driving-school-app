@@ -30,6 +30,17 @@ class PaymentModel {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      if (id.isNotEmpty) 'id': id,
+      'student_id': studentId,
+      'amount': amount,
+      'payment_method': paymentMethod,
+      'payment_date': _dateToJson(paymentDate),
+      'notes': notes,
+    };
+  }
+
   String get amountText {
     final value =
         amount % 1 == 0 ? amount.toInt().toString() : amount.toStringAsFixed(2);
@@ -73,5 +84,13 @@ class PaymentModel {
     }
 
     return null;
+  }
+
+  static String? _dateToJson(DateTime? date) {
+    if (date == null) {
+      return null;
+    }
+
+    return date.toIso8601String().split('T').first;
   }
 }

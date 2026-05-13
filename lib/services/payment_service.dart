@@ -19,4 +19,15 @@ class PaymentService {
         .map((row) => PaymentModel.fromMap(Map<String, dynamic>.from(row)))
         .toList();
   }
+
+  Future<PaymentModel> createPayment(PaymentModel payment) async {
+    final response =
+        await _client
+            .from('payments')
+            .insert(payment.toJson())
+            .select()
+            .single();
+
+    return PaymentModel.fromMap(Map<String, dynamic>.from(response));
+  }
 }
