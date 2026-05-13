@@ -401,6 +401,14 @@ class _RecordPaymentDialogState extends State<_RecordPaymentDialog> {
     }
 
     if (success) {
+      final studentProvider = context.read<StudentProvider>();
+      await studentProvider.fetchStudentById(widget.studentId);
+      await studentProvider.fetchStudents();
+
+      if (!mounted) {
+        return;
+      }
+
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Payment recorded successfully.')),
