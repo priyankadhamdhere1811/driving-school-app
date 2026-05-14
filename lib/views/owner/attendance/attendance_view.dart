@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/student_model.dart';
+import '../../../providers/attendance_provider.dart';
+import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
@@ -9,11 +13,17 @@ import '../../../widgets/owner/owner_section_card.dart';
 import '../../../widgets/owner/owner_stat_card.dart';
 import '../../../widgets/owner/owner_status_badge.dart';
 
-class AttendanceView extends StatelessWidget {
+class AttendanceView extends StatefulWidget {
   const AttendanceView({super.key});
 
+  @override
+  State<AttendanceView> createState() => _AttendanceViewState();
+}
+
+class _AttendanceViewState extends State<AttendanceView> {
   static const _students = [
     _AttendanceStudent(
+      id: '',
       name: 'Amit Sharma',
       course: 'Beginner Driving',
       batch: 'Morning Batch',
@@ -23,6 +33,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '08 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Neha Singh',
       course: 'Advanced Course',
       batch: 'Evening Batch',
@@ -32,6 +43,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '07 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Vikram Patel',
       course: 'Licence Assistance',
       batch: 'Morning Batch',
@@ -41,6 +53,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '08 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Priya Nair',
       course: 'Beginner Driving',
       batch: 'Weekend Batch',
@@ -50,6 +63,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '08 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Rohan Das',
       course: 'Advanced Course',
       batch: 'Evening Batch',
@@ -59,6 +73,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '06 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Sara Khan',
       course: 'Beginner Driving',
       batch: 'Morning Batch',
@@ -68,6 +83,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '08 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Karan Mehta',
       course: 'Weekend Batch',
       batch: 'Weekend Batch',
@@ -77,6 +93,7 @@ class AttendanceView extends StatelessWidget {
       lastAttended: '08 May 2026',
     ),
     _AttendanceStudent(
+      id: '',
       name: 'Anjali Rao',
       course: 'Licence Assistance',
       batch: 'Evening Batch',
@@ -100,6 +117,28 @@ class AttendanceView extends StatelessWidget {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadAttendance());
+  }
+
+  Future<void> _loadAttendance() async {
+    final studentProvider = context.read<StudentProvider>();
+    if (studentProvider.students.isEmpty) {
+      await studentProvider.fetchStudents();
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    final attendanceProvider = context.read<AttendanceProvider>();
+    for (final student in studentProvider.students) {
+      await attendanceProvider.fetchAttendanceByStudentId(student.id);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       padding: AppSpacing.ownerPagePadding,
@@ -108,36 +147,111 @@ class AttendanceView extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: AppSpacing.ownerMaxContentWidth,
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PageHeader(),
-              SizedBox(height: AppSpacing.sectionX),
-              _SummaryCards(),
-              SizedBox(height: AppSpacing.sectionX),
-              OwnerSearchFilterBar(
-                hintText: 'Search by student name or mobile',
-                filters: [
-                  'All',
-                  'Present',
-                  'Absent',
-                  'Morning Batch',
-                  'Evening Batch',
+          child: Consumer2<StudentProvider, AttendanceProvider>(
+            builder: (context, studentProvider, attendanceProvider, child) {
+              final realStudents =
+                  studentProvider.students
+                      .map(
+                        (student) => _AttendanceStudent.fromStudent(
+                          student,
+                          attendanceProvider,
+                        ),
+                      )
+                      .toList();
+              final students = realStudents.isEmpty ? _students : realStudents;
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _PageHeader(),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _SummaryCards(
+                    totalStudents:
+                        realStudents.isEmpty
+                            ? '128'
+                            : realStudents.length.toString(),
+                    presentToday:
+                        realStudents.isEmpty
+                            ? '94'
+                            : attendanceProvider.presentToday.toString(),
+                  ),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const OwnerSearchFilterBar(
+                    hintText: 'Search by student name or mobile',
+                    filters: [
+                      'All',
+                      'Present',
+                      'Absent',
+                      'Morning Batch',
+                      'Evening Batch',
+                    ],
+                    breakpoint: 600,
+                  ),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  if (attendanceProvider.generatedOtpForTesting != null)
+                    _GeneratedOtpBanner(provider: attendanceProvider),
+                  if (attendanceProvider.generatedOtpForTesting != null)
+                    const SizedBox(height: AppSpacing.sectionX),
+                  if (studentProvider.isLoading && realStudents.isEmpty)
+                    const _StateCard(
+                      message: 'Loading students...',
+                      showLoader: true,
+                    )
+                  else
+                    _AttendanceRecords(
+                      students: students,
+                      onGenerateOtp: _generateOtp,
+                      onVerifyOtp: _showVerifyOtpDialog,
+                      actionsEnabled: realStudents.isNotEmpty,
+                      loadingStudentId: attendanceProvider.loadingStudentId,
+                      verifyingStudentId: attendanceProvider.verifyingStudentId,
+                    ),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const _AttendanceCalendarSection(),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const _BatchOverviewSection(batches: _batches),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const _AttendanceAnalytics(trends: _trendCards),
                 ],
-                breakpoint: 600,
-              ),
-              SizedBox(height: AppSpacing.sectionX),
-              _AttendanceRecords(students: _students),
-              SizedBox(height: AppSpacing.sectionX),
-              _AttendanceCalendarSection(),
-              SizedBox(height: AppSpacing.sectionX),
-              _BatchOverviewSection(batches: _batches),
-              SizedBox(height: AppSpacing.sectionX),
-              _AttendanceAnalytics(trends: _trendCards),
-            ],
+              );
+            },
           ),
         ),
       ),
+    );
+  }
+
+  Future<void> _generateOtp(_AttendanceStudent student) async {
+    if (student.id.isEmpty) {
+      return;
+    }
+
+    final provider = context.read<AttendanceProvider>();
+    final success = await provider.generateOtp(student.id);
+
+    if (!mounted) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          success
+              ? 'OTP for ${student.name}: ${provider.generatedOtpForTesting}'
+              : provider.errorMessage ?? 'Unable to generate OTP.',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showVerifyOtpDialog(_AttendanceStudent student) async {
+    if (student.id.isEmpty) {
+      return;
+    }
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) => _VerifyOtpDialog(student: student),
     );
   }
 }
@@ -231,20 +345,26 @@ class _HeaderActions extends StatelessWidget {
 }
 
 class _SummaryCards extends StatelessWidget {
-  const _SummaryCards();
+  final String totalStudents;
+  final String presentToday;
+
+  const _SummaryCards({
+    required this.totalStudents,
+    required this.presentToday,
+  });
 
   @override
   Widget build(BuildContext context) {
     final cards = [
-      const _SummaryData(
+      _SummaryData(
         'Total Active Students',
-        '128',
+        totalStudents,
         Icons.people_outline,
         AppColors.primary,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Present Today',
-        '94',
+        presentToday,
         Icons.check_circle_outline,
         AppColors.ctaGreen,
       ),
@@ -295,20 +415,199 @@ class _SummaryCards extends StatelessWidget {
   }
 }
 
+class _GeneratedOtpBanner extends StatelessWidget {
+  final AttendanceProvider provider;
+
+  const _GeneratedOtpBanner({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Row(
+        children: [
+          const Icon(Icons.sms_outlined, color: AppColors.primary),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Text(
+              'Test OTP: ${provider.generatedOtpForTesting}',
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StateCard extends StatelessWidget {
+  final String message;
+  final bool showLoader;
+
+  const _StateCard({required this.message, this.showLoader = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(
+      child: Center(
+        child: Column(
+          children: [
+            if (showLoader)
+              const CircularProgressIndicator()
+            else
+              const Icon(Icons.info_outline, color: AppColors.primary),
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              message,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VerifyOtpDialog extends StatefulWidget {
+  final _AttendanceStudent student;
+
+  const _VerifyOtpDialog({required this.student});
+
+  @override
+  State<_VerifyOtpDialog> createState() => _VerifyOtpDialogState();
+}
+
+class _VerifyOtpDialogState extends State<_VerifyOtpDialog> {
+  final _formKey = GlobalKey<FormState>();
+  final _otpController = TextEditingController();
+
+  @override
+  void dispose() {
+    _otpController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final provider = context.watch<AttendanceProvider>();
+    final isLoading = provider.verifyingStudentId == widget.student.id;
+
+    return AlertDialog(
+      title: Text('Verify ${widget.student.name}'),
+      content: Form(
+        key: _formKey,
+        child: TextFormField(
+          controller: _otpController,
+          keyboardType: TextInputType.number,
+          maxLength: 6,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return 'OTP is required';
+            }
+            return null;
+          },
+          decoration: const InputDecoration(
+            labelText: 'OTP',
+            prefixIcon: Icon(Icons.verified_outlined),
+          ),
+        ),
+      ),
+      actions: [
+        OutlinedButton(
+          onPressed: isLoading ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          onPressed: isLoading ? null : _verify,
+          icon:
+              isLoading
+                  ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                  : const Icon(Icons.check_circle_outline),
+          label: Text(isLoading ? 'Verifying...' : 'Verify OTP'),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _verify() async {
+    if (!(_formKey.currentState?.validate() ?? false)) {
+      return;
+    }
+
+    final provider = context.read<AttendanceProvider>();
+    final success = await provider.verifyOtpAndMarkAttendance(
+      widget.student.id,
+      _otpController.text.trim(),
+    );
+
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Attendance marked present.')),
+      );
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(provider.errorMessage ?? 'Unable to verify OTP.')),
+    );
+  }
+}
+
 class _AttendanceRecords extends StatelessWidget {
   final List<_AttendanceStudent> students;
+  final ValueChanged<_AttendanceStudent> onGenerateOtp;
+  final ValueChanged<_AttendanceStudent> onVerifyOtp;
+  final bool actionsEnabled;
+  final String? loadingStudentId;
+  final String? verifyingStudentId;
 
-  const _AttendanceRecords({required this.students});
+  const _AttendanceRecords({
+    required this.students,
+    required this.onGenerateOtp,
+    required this.onVerifyOtp,
+    required this.actionsEnabled,
+    required this.loadingStudentId,
+    required this.verifyingStudentId,
+  });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 980) {
-          return _AttendanceTable(students: students);
+        if (constraints.maxWidth >= 1120) {
+          return _AttendanceTable(
+            students: students,
+            onGenerateOtp: onGenerateOtp,
+            onVerifyOtp: onVerifyOtp,
+            actionsEnabled: actionsEnabled,
+            loadingStudentId: loadingStudentId,
+            verifyingStudentId: verifyingStudentId,
+          );
         }
 
-        return _AttendanceCardList(students: students);
+        return _AttendanceCardList(
+          students: students,
+          onGenerateOtp: onGenerateOtp,
+          onVerifyOtp: onVerifyOtp,
+          actionsEnabled: actionsEnabled,
+          loadingStudentId: loadingStudentId,
+          verifyingStudentId: verifyingStudentId,
+        );
       },
     );
   }
@@ -316,8 +615,20 @@ class _AttendanceRecords extends StatelessWidget {
 
 class _AttendanceTable extends StatelessWidget {
   final List<_AttendanceStudent> students;
+  final ValueChanged<_AttendanceStudent> onGenerateOtp;
+  final ValueChanged<_AttendanceStudent> onVerifyOtp;
+  final bool actionsEnabled;
+  final String? loadingStudentId;
+  final String? verifyingStudentId;
 
-  const _AttendanceTable({required this.students});
+  const _AttendanceTable({
+    required this.students,
+    required this.onGenerateOtp,
+    required this.onVerifyOtp,
+    required this.actionsEnabled,
+    required this.loadingStudentId,
+    required this.verifyingStudentId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -359,10 +670,17 @@ class _AttendanceTable extends StatelessWidget {
                         DataCell(Text(student.attendancePercent)),
                         DataCell(Text(student.lastAttended)),
                         DataCell(
-                          IconButton(
-                            tooltip: 'Update attendance',
-                            onPressed: () {},
-                            icon: const Icon(Icons.edit_calendar_outlined),
+                          SizedBox(
+                            width: 270,
+                            child: _AttendanceActionButtons(
+                              student: student,
+                              onGenerateOtp: onGenerateOtp,
+                              onVerifyOtp: onVerifyOtp,
+                              actionsEnabled: actionsEnabled,
+                              verifyingStudentId: verifyingStudentId,
+                              loadingStudentId: loadingStudentId,
+                              fullWidth: false,
+                            ),
                           ),
                         ),
                       ],
@@ -377,8 +695,20 @@ class _AttendanceTable extends StatelessWidget {
 
 class _AttendanceCardList extends StatelessWidget {
   final List<_AttendanceStudent> students;
+  final ValueChanged<_AttendanceStudent> onGenerateOtp;
+  final ValueChanged<_AttendanceStudent> onVerifyOtp;
+  final bool actionsEnabled;
+  final String? loadingStudentId;
+  final String? verifyingStudentId;
 
-  const _AttendanceCardList({required this.students});
+  const _AttendanceCardList({
+    required this.students,
+    required this.onGenerateOtp,
+    required this.onVerifyOtp,
+    required this.actionsEnabled,
+    required this.loadingStudentId,
+    required this.verifyingStudentId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -388,7 +718,14 @@ class _AttendanceCardList extends StatelessWidget {
               .map(
                 (student) => Padding(
                   padding: const EdgeInsets.only(bottom: AppSpacing.xl),
-                  child: _AttendanceCard(student: student),
+                  child: _AttendanceCard(
+                    student: student,
+                    onGenerateOtp: onGenerateOtp,
+                    onVerifyOtp: onVerifyOtp,
+                    actionsEnabled: actionsEnabled,
+                    loadingStudentId: loadingStudentId,
+                    verifyingStudentId: verifyingStudentId,
+                  ),
                 ),
               )
               .toList(),
@@ -398,8 +735,20 @@ class _AttendanceCardList extends StatelessWidget {
 
 class _AttendanceCard extends StatelessWidget {
   final _AttendanceStudent student;
+  final ValueChanged<_AttendanceStudent> onGenerateOtp;
+  final ValueChanged<_AttendanceStudent> onVerifyOtp;
+  final bool actionsEnabled;
+  final String? loadingStudentId;
+  final String? verifyingStudentId;
 
-  const _AttendanceCard({required this.student});
+  const _AttendanceCard({
+    required this.student,
+    required this.onGenerateOtp,
+    required this.onVerifyOtp,
+    required this.actionsEnabled,
+    required this.loadingStudentId,
+    required this.verifyingStudentId,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -426,17 +775,102 @@ class _AttendanceCard extends StatelessWidget {
           _InfoLine('Attendance', student.attendancePercent),
           _InfoLine('Last Attended', student.lastAttended),
           const SizedBox(height: AppSpacing.md),
-          Align(
-            alignment: Alignment.centerRight,
-            child: FilledButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.edit_calendar_outlined),
-              label: const Text('Update'),
-              style: OwnerActionButton.filledStyle(AppColors.primary),
-            ),
+          _AttendanceActionButtons(
+            student: student,
+            onGenerateOtp: onGenerateOtp,
+            onVerifyOtp: onVerifyOtp,
+            actionsEnabled: actionsEnabled,
+            loadingStudentId: loadingStudentId,
+            verifyingStudentId: verifyingStudentId,
+            fullWidth: true,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _AttendanceActionButtons extends StatelessWidget {
+  final _AttendanceStudent student;
+  final ValueChanged<_AttendanceStudent> onGenerateOtp;
+  final ValueChanged<_AttendanceStudent> onVerifyOtp;
+  final bool actionsEnabled;
+  final String? loadingStudentId;
+  final String? verifyingStudentId;
+  final bool fullWidth;
+
+  const _AttendanceActionButtons({
+    required this.student,
+    required this.onGenerateOtp,
+    required this.onVerifyOtp,
+    required this.actionsEnabled,
+    required this.loadingStudentId,
+    required this.verifyingStudentId,
+    required this.fullWidth,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isGenerating = loadingStudentId == student.id;
+    final isVerifying = verifyingStudentId == student.id;
+
+    final canGenerate = actionsEnabled && !isGenerating;
+    final canVerify = actionsEnabled && !isVerifying;
+    final generate = OutlinedButton.icon(
+      onPressed: canGenerate ? () => onGenerateOtp(student) : null,
+      icon:
+          isGenerating
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.password_outlined),
+      label: Text(isGenerating ? 'Generating...' : 'Generate OTP'),
+      style: OwnerActionButton.outlinedStyle(),
+    );
+    final verify = FilledButton.icon(
+      onPressed: canVerify ? () => onVerifyOtp(student) : null,
+      icon:
+          isVerifying
+              ? const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+              : const Icon(Icons.verified_outlined),
+      label: Text(isVerifying ? 'Verifying...' : 'Verify OTP'),
+      style: OwnerActionButton.filledStyle(AppColors.primary),
+    );
+
+    if (!fullWidth) {
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          SizedBox(width: 146, child: generate),
+          SizedBox(width: 116, child: verify),
+        ],
+      );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 430) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [generate, const SizedBox(height: AppSpacing.sm), verify],
+          );
+        }
+
+        return Row(
+          children: [
+            Expanded(child: generate),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(child: verify),
+          ],
+        );
+      },
     );
   }
 }
@@ -852,6 +1286,7 @@ class _SoftCard extends StatelessWidget {
 }
 
 class _AttendanceStudent {
+  final String id;
   final String name;
   final String course;
   final String batch;
@@ -861,6 +1296,7 @@ class _AttendanceStudent {
   final String lastAttended;
 
   const _AttendanceStudent({
+    required this.id,
     required this.name,
     required this.course,
     required this.batch,
@@ -869,6 +1305,58 @@ class _AttendanceStudent {
     required this.attendancePercent,
     required this.lastAttended,
   });
+
+  factory _AttendanceStudent.fromStudent(
+    StudentModel student,
+    AttendanceProvider attendanceProvider,
+  ) {
+    final isPresent = attendanceProvider.isPresentToday(student.id);
+    final attendedCount = attendanceProvider.attendanceCount(student.id);
+
+    return _AttendanceStudent(
+      id: student.id,
+      name: _valueOrDash(student.fullName),
+      course: _valueOrDash(student.course),
+      batch: _valueOrDash(student.preferredBatch),
+      mobile: _valueOrDash(student.mobileNumber),
+      status: isPresent ? 'Present' : 'Absent',
+      attendancePercent:
+          attendedCount == 0 ? '0%' : '${(attendedCount * 10).clamp(0, 100)}%',
+      lastAttended: _formatDate(
+        attendanceProvider.lastAttendedDate(student.id),
+      ),
+    );
+  }
+}
+
+String _valueOrDash(String value) {
+  final trimmed = value.trim();
+  return trimmed.isEmpty ? '-' : trimmed;
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) {
+    return '-';
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  final day = date.day.toString().padLeft(2, '0');
+  final month = months[date.month - 1];
+  return '$day $month ${date.year}';
 }
 
 class _BatchData {
