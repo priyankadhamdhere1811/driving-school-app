@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/payment_model.dart';
+import '../../../models/student_model.dart';
+import '../../../providers/payment_provider.dart';
+import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
@@ -9,84 +14,22 @@ import '../../../widgets/owner/owner_section_card.dart';
 import '../../../widgets/owner/owner_stat_card.dart';
 import '../../../widgets/owner/owner_status_badge.dart';
 
-class PaymentsView extends StatelessWidget {
+class PaymentsView extends StatefulWidget {
   const PaymentsView({super.key});
 
-  static const _payments = [
-    _PaymentData(
-      studentName: 'Amit Sharma',
-      mobile: '+91 98765 11111',
-      course: 'Beginner Driving',
-      totalFees: 'Rs 5,000',
-      paid: 'Rs 5,000',
-      remaining: 'Rs 0',
-      nextDueDate: 'Completed',
-      status: 'Paid',
-    ),
-    _PaymentData(
-      studentName: 'Neha Singh',
-      mobile: '+91 98765 22222',
-      course: 'Advanced Course',
-      totalFees: 'Rs 8,000',
-      paid: 'Rs 4,500',
-      remaining: 'Rs 3,500',
-      nextDueDate: '12 May 2026',
-      status: 'Pending',
-    ),
-    _PaymentData(
-      studentName: 'Vikram Patel',
-      mobile: '+91 98765 33333',
-      course: 'Licence Assistance',
-      totalFees: 'Rs 4,500',
-      paid: 'Rs 4,500',
-      remaining: 'Rs 0',
-      nextDueDate: 'Completed',
-      status: 'Paid',
-    ),
-    _PaymentData(
-      studentName: 'Priya Nair',
-      mobile: '+91 98765 44444',
-      course: 'Beginner Driving',
-      totalFees: 'Rs 6,000',
-      paid: 'Rs 2,000',
-      remaining: 'Rs 4,000',
-      nextDueDate: '05 May 2026',
-      status: 'Overdue',
-    ),
-    _PaymentData(
-      studentName: 'Rohan Das',
-      mobile: '+91 98765 55555',
-      course: 'Weekend Batch',
-      totalFees: 'Rs 7,500',
-      paid: 'Rs 3,000',
-      remaining: 'Rs 4,500',
-      nextDueDate: '18 May 2026',
-      status: 'Pending',
-    ),
-    _PaymentData(
-      studentName: 'Sara Khan',
-      mobile: '+91 98765 66666',
-      course: 'Advanced Course',
-      totalFees: 'Rs 8,000',
-      paid: 'Rs 1,500',
-      remaining: 'Rs 6,500',
-      nextDueDate: '02 May 2026',
-      status: 'Overdue',
-    ),
-  ];
+  @override
+  State<PaymentsView> createState() => _PaymentsViewState();
+}
 
-  static const _transactions = [
-    _TransactionData('Amit Sharma', 'Rs 2,500', 'UPI', '08 May 2026', 'Paid'),
-    _TransactionData('Vikram Patel', 'Rs 1,500', 'Cash', '07 May 2026', 'Paid'),
-    _TransactionData('Neha Singh', 'Rs 2,000', 'Card', '06 May 2026', 'Paid'),
-    _TransactionData('Rohan Das', 'Rs 1,000', 'UPI', '04 May 2026', 'Paid'),
-  ];
-
-  static const _reminders = [
-    _ReminderData('Priya Nair', 'Rs 4,000'),
-    _ReminderData('Sara Khan', 'Rs 6,500'),
-    _ReminderData('Neha Singh', 'Rs 3,500'),
-  ];
+class _PaymentsViewState extends State<PaymentsView> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PaymentProvider>().fetchPayments();
+      context.read<StudentProvider>().fetchStudents();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,27 +40,45 @@ class PaymentsView extends StatelessWidget {
           constraints: const BoxConstraints(
             maxWidth: AppSpacing.ownerMaxContentWidth,
           ),
-          child: const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _PageHeader(),
-              SizedBox(height: AppSpacing.sectionX),
-              _SummaryCardsRow(),
-              SizedBox(height: AppSpacing.sectionX),
-              OwnerSearchFilterBar(
-                hintText: 'Search by student name or mobile',
-                filters: ['All', 'Paid', 'Pending', 'Overdue'],
-              ),
-              SizedBox(height: AppSpacing.sectionX),
-              _PaymentsSection(payments: _payments),
-              SizedBox(height: AppSpacing.sectionX),
-              _SecondarySections(
-                transactions: _transactions,
-                reminders: _reminders,
-              ),
-              SizedBox(height: AppSpacing.sectionX),
-              _AnalyticsSection(),
-            ],
+          child: Consumer2<PaymentProvider, StudentProvider>(
+            builder: (context, paymentProvider, studentProvider, child) {
+              final payments = paymentProvider.payments;
+              final students = studentProvider.students;
+              final paymentRows = _buildPaymentRows(students);
+              final transactions = _buildTransactions(payments, students);
+              final reminders = _buildReminders(students);
+              final summary = _SummaryTotals.fromData(payments, students);
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _PageHeader(),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _SummaryCardsRow(summary: summary),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  const OwnerSearchFilterBar(
+                    hintText: 'Search by student name or mobile',
+                    filters: ['All', 'Paid', 'Pending', 'Overdue'],
+                  ),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  if (paymentProvider.isLoading || studentProvider.isLoading)
+                    const _LoadingState()
+                  else if (paymentProvider.errorMessage != null)
+                    _MessageState(message: paymentProvider.errorMessage!)
+                  else if (studentProvider.errorMessage != null)
+                    _MessageState(message: studentProvider.errorMessage!)
+                  else
+                    _PaymentsSection(payments: paymentRows),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _SecondarySections(
+                    transactions: transactions,
+                    reminders: reminders,
+                  ),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _AnalyticsSection(summary: summary),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -214,32 +175,34 @@ class _HeaderActions extends StatelessWidget {
 }
 
 class _SummaryCardsRow extends StatelessWidget {
-  const _SummaryCardsRow();
+  final _SummaryTotals summary;
+
+  const _SummaryCardsRow({required this.summary});
 
   @override
   Widget build(BuildContext context) {
     final cards = [
-      const _SummaryData(
+      _SummaryData(
         'Total Collected',
-        'Rs 1,48,500',
+        _formatAmount(summary.totalCollected),
         Icons.account_balance_wallet_outlined,
         AppColors.ctaGreen,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Pending Amount',
-        'Rs 42,500',
+        _formatAmount(summary.pendingAmount),
         Icons.receipt_long_outlined,
         AppColors.accent,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Payments This Month',
-        '36',
+        summary.paymentsThisMonth.toString(),
         Icons.calendar_month_outlined,
         AppColors.primary,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Overdue Students',
-        '8',
+        summary.overdueStudents.toString(),
         Icons.alarm_outlined,
         AppColors.darkRed,
       ),
@@ -263,12 +226,15 @@ class _SummaryCardsRow extends StatelessWidget {
           children:
               cards
                   .map(
-                    (card) => OwnerStatCard(
+                    (card) => SizedBox(
                       width: cardWidth,
-                      title: card.label,
-                      value: card.value,
-                      icon: card.icon,
-                      color: card.color,
+                      child: OwnerStatCard(
+                        width: double.infinity,
+                        title: card.label,
+                        value: card.value,
+                        icon: card.icon,
+                        color: card.color,
+                      ),
                     ),
                   )
                   .toList(),
@@ -287,6 +253,10 @@ class _PaymentsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        if (payments.isEmpty) {
+          return const _MessageState(message: 'No payment records found.');
+        }
+
         if (constraints.maxWidth >= 980) {
           return _PaymentsTable(payments: payments);
         }
@@ -496,12 +466,17 @@ class _RecentTransactions extends StatelessWidget {
     return _SectionCard(
       title: 'Recent Transactions',
       icon: Icons.history_outlined,
-      child: Column(
-        children:
-            transactions
-                .map((transaction) => _TransactionTile(data: transaction))
-                .toList(),
-      ),
+      child:
+          transactions.isEmpty
+              ? const _EmptyMessage(message: 'No recent transactions found.')
+              : Column(
+                children:
+                    transactions
+                        .map(
+                          (transaction) => _TransactionTile(data: transaction),
+                        )
+                        .toList(),
+              ),
     );
   }
 }
@@ -578,12 +553,15 @@ class _ReminderSection extends StatelessWidget {
     return _SectionCard(
       title: 'Payment Reminders',
       icon: Icons.notifications_active_outlined,
-      child: Column(
-        children:
-            reminders
-                .map((reminder) => _ReminderTile(reminder: reminder))
-                .toList(),
-      ),
+      child:
+          reminders.isEmpty
+              ? const _EmptyMessage(message: 'No reminders yet.')
+              : Column(
+                children:
+                    reminders
+                        .map((reminder) => _ReminderTile(reminder: reminder))
+                        .toList(),
+              ),
     );
   }
 }
@@ -642,26 +620,32 @@ class _ReminderTile extends StatelessWidget {
 }
 
 class _AnalyticsSection extends StatelessWidget {
-  const _AnalyticsSection();
+  final _SummaryTotals summary;
+
+  const _AnalyticsSection({required this.summary});
 
   @override
   Widget build(BuildContext context) {
+    final totalFees = summary.totalCollected + summary.pendingAmount;
+    final collectedProgress =
+        totalFees == 0 ? 0.0 : (summary.totalCollected / totalFees);
+
     return _SectionCard(
       title: 'Payment Analytics',
       icon: Icons.analytics_outlined,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           _ProgressLine(
             label: 'Collected vs Remaining',
-            valueLabel: '78% collected',
-            value: 0.78,
+            valueLabel: '${(collectedProgress * 100).round()}% collected',
+            value: collectedProgress.clamp(0, 1).toDouble(),
           ),
-          SizedBox(height: AppSpacing.xl),
+          const SizedBox(height: AppSpacing.xl),
           _ProgressLine(
             label: 'Monthly Collection Progress',
-            valueLabel: 'Rs 1,48,500 of Rs 1,90,000',
-            value: 0.72,
+            valueLabel: '${summary.paymentsThisMonth} payments this month',
+            value: summary.paymentsThisMonth == 0 ? 0.0 : 1.0,
           ),
         ],
       ),
@@ -818,6 +802,195 @@ class _SoftCard extends StatelessWidget {
         ],
       ),
       child: child,
+    );
+  }
+}
+
+class _LoadingState extends StatelessWidget {
+  const _LoadingState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const _SoftCard(child: Center(child: CircularProgressIndicator()));
+  }
+}
+
+class _MessageState extends StatelessWidget {
+  final String message;
+
+  const _MessageState({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return _SoftCard(child: _EmptyMessage(message: message));
+  }
+}
+
+class _EmptyMessage extends StatelessWidget {
+  final String message;
+
+  const _EmptyMessage({required this.message});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: const TextStyle(
+        color: AppColors.textGray,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+List<_PaymentData> _buildPaymentRows(List<StudentModel> students) {
+  final today = DateTime.now();
+
+  return students.map((student) {
+    return _PaymentData(
+      studentName: student.fullName,
+      mobile: student.mobileNumber,
+      course: student.course,
+      totalFees: student.totalFeesText,
+      paid: student.paidAmountText,
+      remaining: student.remainingFeesText,
+      nextDueDate: _dueDateText(student.nextPaymentDate),
+      status: _paymentStatus(student, today),
+    );
+  }).toList();
+}
+
+List<_TransactionData> _buildTransactions(
+  List<PaymentModel> payments,
+  List<StudentModel> students,
+) {
+  final studentsById = {for (final student in students) student.id: student};
+
+  return payments.map((payment) {
+    final student = studentsById[payment.studentId];
+
+    return _TransactionData(
+      student?.fullName ?? 'Unknown Student',
+      payment.amountText,
+      payment.paymentMethod.isEmpty ? '-' : payment.paymentMethod,
+      _formatDate(payment.paymentDate),
+      'Paid',
+    );
+  }).toList();
+}
+
+List<_ReminderData> _buildReminders(List<StudentModel> students) {
+  return students
+      .where((student) => student.remainingFees > 0)
+      .map(
+        (student) => _ReminderData(student.fullName, student.remainingFeesText),
+      )
+      .toList();
+}
+
+String _paymentStatus(StudentModel student, DateTime today) {
+  if (student.remainingFees <= 0) {
+    return 'Paid';
+  }
+
+  final dueDate = student.nextPaymentDate;
+  if (dueDate != null && _dateOnly(dueDate).isBefore(_dateOnly(today))) {
+    return 'Overdue';
+  }
+
+  return 'Pending';
+}
+
+String _dueDateText(DateTime? date) {
+  if (date == null) {
+    return '-';
+  }
+
+  return _formatDate(date);
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) {
+    return '-';
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+
+  final day = date.day.toString().padLeft(2, '0');
+  final month = months[date.month - 1];
+  return '$day $month ${date.year}';
+}
+
+String _formatAmount(num value) {
+  final amount =
+      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+  return 'Rs $amount';
+}
+
+DateTime _dateOnly(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
+class _SummaryTotals {
+  final num totalCollected;
+  final num pendingAmount;
+  final int paymentsThisMonth;
+  final int overdueStudents;
+
+  const _SummaryTotals({
+    required this.totalCollected,
+    required this.pendingAmount,
+    required this.paymentsThisMonth,
+    required this.overdueStudents,
+  });
+
+  factory _SummaryTotals.fromData(
+    List<PaymentModel> payments,
+    List<StudentModel> students,
+  ) {
+    final now = DateTime.now();
+    final today = _dateOnly(now);
+    final totalCollected = payments.fold<num>(
+      0,
+      (total, payment) => total + payment.amount,
+    );
+    final pendingAmount = students.fold<num>(
+      0,
+      (total, student) => total + student.remainingFees,
+    );
+    final paymentsThisMonth =
+        payments.where((payment) {
+          final date = payment.paymentDate;
+          return date != null &&
+              date.year == now.year &&
+              date.month == now.month;
+        }).length;
+    final overdueStudents =
+        students.where((student) {
+          final dueDate = student.nextPaymentDate;
+          return student.remainingFees > 0 &&
+              dueDate != null &&
+              _dateOnly(dueDate).isBefore(today);
+        }).length;
+
+    return _SummaryTotals(
+      totalCollected: totalCollected,
+      pendingAmount: pendingAmount,
+      paymentsThisMonth: paymentsThisMonth,
+      overdueStudents: overdueStudents,
     );
   }
 }

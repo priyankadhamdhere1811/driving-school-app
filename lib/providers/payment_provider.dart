@@ -25,6 +25,29 @@ class PaymentProvider extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
+  Future<bool> fetchPayments() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final fetchedPayments = await _paymentService.fetchPayments();
+      _payments
+        ..clear()
+        ..addAll(fetchedPayments);
+      _paymentCount = _payments.length;
+      return true;
+    } catch (error) {
+      _payments.clear();
+      _paymentCount = 0;
+      _errorMessage = 'Unable to load payments. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   Future<bool> fetchPaymentsByStudentId(String studentId) async {
     _isLoading = true;
     _errorMessage = null;

@@ -8,6 +8,17 @@ class PaymentService {
   PaymentService({SupabaseClient? client})
     : _client = client ?? Supabase.instance.client;
 
+  Future<List<PaymentModel>> fetchPayments() async {
+    final response = await _client
+        .from('payments')
+        .select()
+        .order('payment_date', ascending: false);
+
+    return response
+        .map((row) => PaymentModel.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
   Future<List<PaymentModel>> fetchPaymentsByStudentId(String studentId) async {
     final response = await _client
         .from('payments')
