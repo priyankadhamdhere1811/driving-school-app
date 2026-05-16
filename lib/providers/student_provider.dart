@@ -69,13 +69,11 @@ class StudentProvider extends ChangeNotifier {
 
     try {
       final updatedStudent = await _studentService.updateStudent(id, student);
+      final fetchedStudents = await _studentService.fetchStudents();
       _selectedStudent = updatedStudent;
-      final index = _students.indexWhere((item) => item.id == id);
-      if (index == -1) {
-        _students.add(updatedStudent);
-      } else {
-        _students[index] = updatedStudent;
-      }
+      _students
+        ..clear()
+        ..addAll(fetchedStudents);
       return true;
     } catch (error) {
       _errorMessage = 'Unable to update student. Please try again.';

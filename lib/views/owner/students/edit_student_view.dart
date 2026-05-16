@@ -38,11 +38,15 @@ class _EditStudentViewState extends State<EditStudentView> {
   @override
   void initState() {
     super.initState();
+    _totalFeesController.addListener(_updateRemainingFees);
+    _advancePaidController.addListener(_updateRemainingFees);
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadStudent());
   }
 
   @override
   void dispose() {
+    _totalFeesController.removeListener(_updateRemainingFees);
+    _advancePaidController.removeListener(_updateRemainingFees);
     _fullNameController.dispose();
     _mobileController.dispose();
     _alternateMobileController.dispose();
@@ -56,6 +60,18 @@ class _EditStudentViewState extends State<EditStudentView> {
     _nextPaymentDateController.dispose();
     _notesController.dispose();
     super.dispose();
+  }
+
+  void _updateRemainingFees() {
+    final totalFees = num.tryParse(_totalFeesController.text.trim()) ?? 0;
+    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
+    final remainingFees = totalFees - advancePaid;
+    final value = remainingFees < 0 ? 0 : remainingFees;
+    final text = _formatAmount(value);
+
+    if (_remainingFeesController.text != text) {
+      _remainingFeesController.text = text;
+    }
   }
 
   Future<void> _loadStudent() async {

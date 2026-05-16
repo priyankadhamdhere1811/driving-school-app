@@ -17,6 +17,9 @@ class StudentListView extends StatefulWidget {
 }
 
 class _StudentListViewState extends State<StudentListView> {
+  String _searchQuery = '';
+  String _selectedFilter = 'All';
+
   @override
   void initState() {
     super.initState();
@@ -39,9 +42,21 @@ class _StudentListViewState extends State<StudentListView> {
             children: [
               const _PageHeader(),
               const SizedBox(height: AppSpacing.sectionX),
-              const OwnerSearchFilterBar(
+              OwnerSearchFilterBar(
                 hintText: 'Search by name, mobile, area, or course',
-                filters: ['All', 'Active', 'Completed', 'Pending Payment'],
+                filters: const [
+                  'All',
+                  'Active',
+                  'Completed',
+                  'Pending Payment',
+                ],
+                selectedFilter: _selectedFilter,
+                onSearchChanged: (value) {
+                  setState(() => _searchQuery = value);
+                },
+                onFilterChanged: (value) {
+                  setState(() => _selectedFilter = value);
+                },
                 breakpoint: 520,
               ),
               const SizedBox(height: AppSpacing.sectionX),
@@ -58,7 +73,7 @@ class _StudentListViewState extends State<StudentListView> {
                     );
                   }
 
-                  final students = studentProvider.students;
+                  final students = _filteredStudents(studentProvider.students);
                   if (students.isEmpty) {
                     return const _MessageState(
                       icon: Icons.people_outline,
@@ -82,6 +97,23 @@ class _StudentListViewState extends State<StudentListView> {
         ),
       ),
     );
+  }
+
+  List<StudentModel> _filteredStudents(List<StudentModel> students) {
+    final query = _searchQuery.trim().toLowerCase();
+
+    return students.where((student) {
+      final matchesSearch =
+          query.isEmpty ||
+          student.fullName.toLowerCase().contains(query) ||
+          student.mobileNumber.toLowerCase().contains(query) ||
+          student.areaVillage.toLowerCase().contains(query) ||
+          student.course.toLowerCase().contains(query);
+      final matchesStatus =
+          _selectedFilter == 'All' || student.displayStatus == _selectedFilter;
+
+      return matchesSearch && matchesStatus;
+    }).toList();
   }
 }
 

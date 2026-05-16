@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../models/reminder_model.dart';
+import '../../providers/reminder_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_spacing.dart';
 import '../../utils/app_text_styles.dart';
 import '../../widgets/owner/owner_section_card.dart';
 import '../../widgets/owner/owner_stat_card.dart';
+import '../../widgets/owner/owner_status_badge.dart';
 
 class OwnerDashboardView extends StatelessWidget {
   const OwnerDashboardView({super.key});
@@ -15,8 +19,23 @@ class OwnerDashboardView extends StatelessWidget {
   }
 }
 
-class _DashboardContent extends StatelessWidget {
+class _DashboardContent extends StatefulWidget {
   const _DashboardContent();
+
+  @override
+  State<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends State<_DashboardContent> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<ReminderProvider>().fetchReminders();
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -73,17 +92,10 @@ class _DashboardContent extends StatelessWidget {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
-                  final columns =
-                      width >= 1180
-                          ? 5
-                          : width >= 900
-                          ? 3
-                          : width >= 620
-                          ? 2
-                          : 1;
-                  final spacing = width < 620 ? AppSpacing.md : AppSpacing.xl;
+                  final columns = width >= 760 ? 2 : 1;
+                  final spacing = columns == 1 ? AppSpacing.md : AppSpacing.xl;
                   final cardWidth =
-                      (width - (spacing * (columns - 1))) / columns;
+                      columns == 1 ? width : (width - spacing) / columns;
 
                   return Wrap(
                     spacing: spacing,
@@ -91,13 +103,16 @@ class _DashboardContent extends StatelessWidget {
                     children:
                         cards
                             .map(
-                              (card) => OwnerStatCard(
+                              (card) => SizedBox(
                                 width: cardWidth,
-                                title: card.title,
-                                value: card.value,
-                                subtitle: card.subtitle,
-                                icon: card.icon,
-                                color: card.color,
+                                child: OwnerStatCard(
+                                  width: double.infinity,
+                                  title: card.title,
+                                  value: card.value,
+                                  subtitle: card.subtitle,
+                                  icon: card.icon,
+                                  color: card.color,
+                                ),
                               ),
                             )
                             .toList(),
@@ -154,13 +169,13 @@ class _DashboardSections extends StatelessWidget {
             _InfoRow('Vikram Patel', 'Licence Assist', 'Rs 4,500', 'Paid'),
           ],
         );
-        final duePayments = const _InfoPanel(
-          title: 'Upcoming Due Payments',
-          rows: [
-            _InfoRow('Priya Nair', 'Due tomorrow', 'Rs 2,000', 'Reminder'),
-            _InfoRow('Rohan Das', 'Due May 12', 'Rs 3,000', 'Pending'),
-            _InfoRow('Sara Khan', 'Due May 15', 'Rs 1,500', 'Pending'),
-          ],
+        final duePayments = Consumer<ReminderProvider>(
+          builder:
+              (context, reminderProvider, child) => _ReminderPanel(
+                reminders: reminderProvider.reminders,
+                isLoading: reminderProvider.isLoading,
+                errorMessage: reminderProvider.errorMessage,
+              ),
         );
         final enquiries = const _InfoPanel(
           title: 'Recent Enquiries',
@@ -172,9 +187,9 @@ class _DashboardSections extends StatelessWidget {
         );
 
         if (!isWide) {
-          return const Column(
+          return Column(
             children: [
-              _InfoPanel(
+              const _InfoPanel(
                 title: 'Recent Payments',
                 rows: [
                   _InfoRow(
@@ -192,22 +207,10 @@ class _DashboardSections extends StatelessWidget {
                   ),
                 ],
               ),
-              SizedBox(height: AppSpacing.xl),
-              _InfoPanel(
-                title: 'Upcoming Due Payments',
-                rows: [
-                  _InfoRow(
-                    'Priya Nair',
-                    'Due tomorrow',
-                    'Rs 2,000',
-                    'Reminder',
-                  ),
-                  _InfoRow('Rohan Das', 'Due May 12', 'Rs 3,000', 'Pending'),
-                  _InfoRow('Sara Khan', 'Due May 15', 'Rs 1,500', 'Pending'),
-                ],
-              ),
-              SizedBox(height: AppSpacing.xl),
-              _InfoPanel(
+              const SizedBox(height: AppSpacing.xl),
+              duePayments,
+              const SizedBox(height: AppSpacing.xl),
+              const _InfoPanel(
                 title: 'Recent Enquiries',
                 rows: [
                   _InfoRow('Karan Mehta', 'Car training', 'Today', 'Callback'),
@@ -249,6 +252,185 @@ class _InfoPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [...rows.map((row) => _InfoListTile(row: row))],
       ),
+    );
+  }
+}
+
+class _ReminderPanel extends StatelessWidget {
+  final List<ReminderModel> reminders;
+  final bool isLoading;
+  final String? errorMessage;
+
+  const _ReminderPanel({
+    required this.reminders,
+    required this.isLoading,
+    required this.errorMessage,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Widget child;
+
+    if (isLoading) {
+      child = const Text(
+        'Loading reminders...',
+        style: TextStyle(color: AppColors.textGray),
+      );
+    } else if (errorMessage != null) {
+      child = Text(
+        errorMessage!,
+        style: const TextStyle(color: AppColors.darkRed),
+      );
+    } else if (reminders.isEmpty) {
+      child = const Text(
+        'No reminders yet.',
+        style: TextStyle(color: AppColors.textGray),
+      );
+    } else {
+      child = _ReminderList(reminders: reminders);
+    }
+
+    return OwnerSectionCard(
+      title: 'Payment Reminders',
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: child,
+    );
+  }
+}
+
+class _ReminderList extends StatelessWidget {
+  final List<ReminderModel> reminders;
+
+  const _ReminderList({required this.reminders});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 720 ? 2 : 1;
+        final spacing = AppSpacing.md;
+        final tileWidth =
+            (constraints.maxWidth - (spacing * (columns - 1))) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children:
+              reminders
+                  .map(
+                    (reminder) => SizedBox(
+                      width: tileWidth,
+                      child: _ReminderTile(reminder: reminder),
+                    ),
+                  )
+                  .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _ReminderTile extends StatelessWidget {
+  final ReminderModel reminder;
+
+  const _ReminderTile({required this.reminder});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 420;
+
+        final details = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              reminder.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              reminder.message.isEmpty ? 'No message added' : reminder.message,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: AppColors.textGray, height: 1.35),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Due ${reminder.dueDateText}',
+              style: const TextStyle(
+                color: AppColors.textDark,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        );
+
+        final actions = Column(
+          crossAxisAlignment:
+              isCompact ? CrossAxisAlignment.stretch : CrossAxisAlignment.end,
+          children: [
+            Align(
+              alignment:
+                  isCompact ? Alignment.centerLeft : Alignment.centerRight,
+              child: OwnerStatusBadge(status: reminder.status),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            SizedBox(
+              width: isCompact ? double.infinity : 128,
+              height: 40,
+              child: OutlinedButton.icon(
+                onPressed: () {},
+                icon: const Icon(Icons.notifications_none_outlined, size: 18),
+                label: const Text('Reminder'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textDark,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  textStyle: AppTextStyles.button,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: AppSpacing.radiusMd,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.ownerCardTint,
+            borderRadius: AppSpacing.radiusMd,
+            border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+          ),
+          child:
+              isCompact
+                  ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      details,
+                      const SizedBox(height: AppSpacing.md),
+                      actions,
+                    ],
+                  )
+                  : Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(child: details),
+                      const SizedBox(width: AppSpacing.md),
+                      actions,
+                    ],
+                  ),
+        );
+      },
     );
   }
 }

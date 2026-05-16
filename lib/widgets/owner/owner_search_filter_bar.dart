@@ -8,6 +8,8 @@ class OwnerSearchFilterBar extends StatelessWidget {
   final String hintText;
   final List<String> filters;
   final String selectedFilter;
+  final ValueChanged<String>? onSearchChanged;
+  final ValueChanged<String>? onFilterChanged;
   final double breakpoint;
 
   const OwnerSearchFilterBar({
@@ -15,6 +17,8 @@ class OwnerSearchFilterBar extends StatelessWidget {
     required this.hintText,
     required this.filters,
     this.selectedFilter = 'All',
+    this.onSearchChanged,
+    this.onFilterChanged,
     this.breakpoint = 560,
   });
 
@@ -34,6 +38,7 @@ class OwnerSearchFilterBar extends StatelessWidget {
               SizedBox(
                 width: isNarrow ? constraints.maxWidth : 360,
                 child: TextField(
+                  onChanged: onSearchChanged,
                   decoration: InputDecoration(
                     hintText: hintText,
                     prefixIcon: const Icon(Icons.search),
@@ -53,7 +58,7 @@ class OwnerSearchFilterBar extends StatelessWidget {
                           .map(
                             (filter) => FilterChip(
                               selected: filter == selectedFilter,
-                              onSelected: (_) {},
+                              onSelected: (_) => onFilterChanged?.call(filter),
                               label: Text(filter),
                               selectedColor: AppColors.ownerTint,
                               checkmarkColor: AppColors.primary,

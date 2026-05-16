@@ -8,6 +8,7 @@ import 'providers/attendance_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/enquiry_provider.dart';
 import 'providers/payment_provider.dart';
+import 'providers/reminder_provider.dart';
 import 'providers/review_provider.dart';
 import 'providers/student_provider.dart';
 
@@ -27,6 +28,7 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => StudentProvider()),
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
         ChangeNotifierProvider(create: (_) => AttendanceProvider()),
         ChangeNotifierProvider(create: (_) => EnquiryProvider()),
         ChangeNotifierProvider(create: (_) => ReviewProvider()),
