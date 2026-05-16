@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../models/attendance_model.dart';
 import '../../../models/student_model.dart';
 import '../../../providers/attendance_provider.dart';
 import '../../../providers/student_provider.dart';
@@ -21,100 +22,8 @@ class AttendanceView extends StatefulWidget {
 }
 
 class _AttendanceViewState extends State<AttendanceView> {
-  static const _students = [
-    _AttendanceStudent(
-      id: '',
-      name: 'Amit Sharma',
-      course: 'Beginner Driving',
-      batch: 'Morning Batch',
-      mobile: '+91 98765 11111',
-      status: 'Present',
-      attendancePercent: '92%',
-      lastAttended: '08 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Neha Singh',
-      course: 'Advanced Course',
-      batch: 'Evening Batch',
-      mobile: '+91 98765 22222',
-      status: 'Absent',
-      attendancePercent: '76%',
-      lastAttended: '07 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Vikram Patel',
-      course: 'Licence Assistance',
-      batch: 'Morning Batch',
-      mobile: '+91 98765 33333',
-      status: 'Present',
-      attendancePercent: '88%',
-      lastAttended: '08 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Priya Nair',
-      course: 'Beginner Driving',
-      batch: 'Weekend Batch',
-      mobile: '+91 98765 44444',
-      status: 'Present',
-      attendancePercent: '84%',
-      lastAttended: '08 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Rohan Das',
-      course: 'Advanced Course',
-      batch: 'Evening Batch',
-      mobile: '+91 98765 55555',
-      status: 'Absent',
-      attendancePercent: '68%',
-      lastAttended: '06 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Sara Khan',
-      course: 'Beginner Driving',
-      batch: 'Morning Batch',
-      mobile: '+91 98765 66666',
-      status: 'Present',
-      attendancePercent: '95%',
-      lastAttended: '08 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Karan Mehta',
-      course: 'Weekend Batch',
-      batch: 'Weekend Batch',
-      mobile: '+91 98765 77777',
-      status: 'Present',
-      attendancePercent: '81%',
-      lastAttended: '08 May 2026',
-    ),
-    _AttendanceStudent(
-      id: '',
-      name: 'Anjali Rao',
-      course: 'Licence Assistance',
-      batch: 'Evening Batch',
-      mobile: '+91 98765 88888',
-      status: 'Absent',
-      attendancePercent: '72%',
-      lastAttended: '05 May 2026',
-    ),
-  ];
-
-  static const _batches = [
-    _BatchData('Morning Batch', '34', '29', '85%'),
-    _BatchData('Evening Batch', '28', '21', '75%'),
-    _BatchData('Weekend Batch', '18', '16', '89%'),
-  ];
-
-  static const _trendCards = [
-    _TrendData('Week 1', '82%', Icons.trending_up),
-    _TrendData('Week 2', '86%', Icons.show_chart),
-    _TrendData('Week 3', '79%', Icons.trending_down),
-  ];
+  String _searchQuery = '';
+  String _selectedFilter = 'All';
 
   @override
   void initState() {
@@ -132,10 +41,7 @@ class _AttendanceViewState extends State<AttendanceView> {
       return;
     }
 
-    final attendanceProvider = context.read<AttendanceProvider>();
-    for (final student in studentProvider.students) {
-      await attendanceProvider.fetchAttendanceByStudentId(student.id);
-    }
+    await context.read<AttendanceProvider>().fetchAttendance();
   }
 
   @override
@@ -158,33 +64,39 @@ class _AttendanceViewState extends State<AttendanceView> {
                         ),
                       )
                       .toList();
-              final students = realStudents.isEmpty ? _students : realStudents;
+              final stats = _AttendanceStats.fromData(
+                studentProvider.students,
+                attendanceProvider.attendanceRecords,
+              );
+              final batches = _buildBatchData(realStudents);
+              final trends = _buildTrendData(
+                attendanceProvider.attendanceRecords,
+              );
+              final filteredStudents = _filteredStudents(realStudents);
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const _PageHeader(),
                   const SizedBox(height: AppSpacing.sectionX),
-                  _SummaryCards(
-                    totalStudents:
-                        realStudents.isEmpty
-                            ? '128'
-                            : realStudents.length.toString(),
-                    presentToday:
-                        realStudents.isEmpty
-                            ? '94'
-                            : attendanceProvider.presentToday.toString(),
-                  ),
+                  _SummaryCards(stats: stats),
                   const SizedBox(height: AppSpacing.sectionX),
-                  const OwnerSearchFilterBar(
-                    hintText: 'Search by student name or mobile',
-                    filters: [
+                  OwnerSearchFilterBar(
+                    hintText: 'Search by name, mobile, course, or batch',
+                    filters: const [
                       'All',
                       'Present',
                       'Absent',
                       'Morning Batch',
                       'Evening Batch',
                     ],
+                    selectedFilter: _selectedFilter,
+                    onSearchChanged: (value) {
+                      setState(() => _searchQuery = value);
+                    },
+                    onFilterChanged: (value) {
+                      setState(() => _selectedFilter = value);
+                    },
                     breakpoint: 600,
                   ),
                   const SizedBox(height: AppSpacing.sectionX),
@@ -192,26 +104,43 @@ class _AttendanceViewState extends State<AttendanceView> {
                     _GeneratedOtpBanner(provider: attendanceProvider),
                   if (attendanceProvider.generatedOtpForTesting != null)
                     const SizedBox(height: AppSpacing.sectionX),
-                  if (studentProvider.isLoading && realStudents.isEmpty)
+                  if (studentProvider.isLoading || attendanceProvider.isLoading)
                     const _StateCard(
-                      message: 'Loading students...',
+                      message: 'Loading attendance...',
                       showLoader: true,
                     )
+                  else if (attendanceProvider.errorMessage != null)
+                    _StateCard(message: attendanceProvider.errorMessage!)
+                  else if (realStudents.isEmpty)
+                    const _StateCard(message: 'No students found.')
+                  else if (filteredStudents.isEmpty)
+                    const _StateCard(message: 'No attendance records found.')
                   else
-                    _AttendanceRecords(
-                      students: students,
-                      onGenerateOtp: _generateOtp,
-                      onVerifyOtp: _showVerifyOtpDialog,
-                      actionsEnabled: realStudents.isNotEmpty,
-                      loadingStudentId: attendanceProvider.loadingStudentId,
-                      verifyingStudentId: attendanceProvider.verifyingStudentId,
+                    Column(
+                      children: [
+                        if (attendanceProvider.attendanceRecords.isEmpty) ...[
+                          const _StateCard(
+                            message: 'No attendance records found.',
+                          ),
+                          const SizedBox(height: AppSpacing.sectionX),
+                        ],
+                        _AttendanceRecords(
+                          students: filteredStudents,
+                          onGenerateOtp: _generateOtp,
+                          onVerifyOtp: _showVerifyOtpDialog,
+                          actionsEnabled: filteredStudents.isNotEmpty,
+                          loadingStudentId: attendanceProvider.loadingStudentId,
+                          verifyingStudentId:
+                              attendanceProvider.verifyingStudentId,
+                        ),
+                      ],
                     ),
                   const SizedBox(height: AppSpacing.sectionX),
-                  const _AttendanceCalendarSection(),
+                  _AttendanceCalendarSection(stats: stats),
                   const SizedBox(height: AppSpacing.sectionX),
-                  const _BatchOverviewSection(batches: _batches),
+                  _BatchOverviewSection(batches: batches),
                   const SizedBox(height: AppSpacing.sectionX),
-                  const _AttendanceAnalytics(trends: _trendCards),
+                  _AttendanceAnalytics(stats: stats, trends: trends),
                 ],
               );
             },
@@ -253,6 +182,30 @@ class _AttendanceViewState extends State<AttendanceView> {
       context: context,
       builder: (context) => _VerifyOtpDialog(student: student),
     );
+  }
+
+  List<_AttendanceStudent> _filteredStudents(
+    List<_AttendanceStudent> students,
+  ) {
+    final query = _searchQuery.trim().toLowerCase();
+
+    return students.where((student) {
+      final matchesSearch =
+          query.isEmpty ||
+          student.name.toLowerCase().contains(query) ||
+          student.mobile.toLowerCase().contains(query) ||
+          student.course.toLowerCase().contains(query) ||
+          student.batch.toLowerCase().contains(query);
+      final matchesFilter = switch (_selectedFilter) {
+        'Present' => student.status == 'Present',
+        'Absent' => student.status == 'Absent',
+        'Morning Batch' => student.batch.toLowerCase().contains('morning'),
+        'Evening Batch' => student.batch.toLowerCase().contains('evening'),
+        _ => true,
+      };
+
+      return matchesSearch && matchesFilter;
+    }).toList();
   }
 }
 
@@ -345,38 +298,34 @@ class _HeaderActions extends StatelessWidget {
 }
 
 class _SummaryCards extends StatelessWidget {
-  final String totalStudents;
-  final String presentToday;
+  final _AttendanceStats stats;
 
-  const _SummaryCards({
-    required this.totalStudents,
-    required this.presentToday,
-  });
+  const _SummaryCards({required this.stats});
 
   @override
   Widget build(BuildContext context) {
     final cards = [
       _SummaryData(
         'Total Active Students',
-        totalStudents,
+        stats.totalStudents.toString(),
         Icons.people_outline,
         AppColors.primary,
       ),
       _SummaryData(
         'Present Today',
-        presentToday,
+        stats.presentToday.toString(),
         Icons.check_circle_outline,
         AppColors.ctaGreen,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Absent Today',
-        '34',
+        stats.absentToday.toString(),
         Icons.cancel_outlined,
         AppColors.accent,
       ),
-      const _SummaryData(
+      _SummaryData(
         'Attendance Percentage',
-        '73%',
+        '${stats.attendancePercentage}%',
         Icons.analytics_outlined,
         AppColors.darkRed,
       ),
@@ -400,12 +349,15 @@ class _SummaryCards extends StatelessWidget {
           children:
               cards
                   .map(
-                    (card) => OwnerStatCard(
+                    (card) => SizedBox(
                       width: cardWidth,
-                      title: card.label,
-                      value: card.value,
-                      icon: card.icon,
-                      color: card.color,
+                      child: OwnerStatCard(
+                        width: double.infinity,
+                        title: card.label,
+                        value: card.value,
+                        icon: card.icon,
+                        color: card.color,
+                      ),
                     ),
                   )
                   .toList(),
@@ -876,16 +828,21 @@ class _AttendanceActionButtons extends StatelessWidget {
 }
 
 class _AttendanceCalendarSection extends StatelessWidget {
-  const _AttendanceCalendarSection();
+  final _AttendanceStats stats;
+
+  const _AttendanceCalendarSection({required this.stats});
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: 'Monthly Attendance Calendar',
       icon: Icons.calendar_month_outlined,
-      trailing: const Text(
-        '82% monthly attendance',
-        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900),
+      trailing: Text(
+        '${stats.attendancePercentage}% attendance',
+        style: const TextStyle(
+          color: AppColors.primary,
+          fontWeight: FontWeight.w900,
+        ),
       ),
       child: const _CalendarGrid(),
     );
@@ -1003,9 +960,10 @@ class _BatchCard extends StatelessWidget {
 }
 
 class _AttendanceAnalytics extends StatelessWidget {
+  final _AttendanceStats stats;
   final List<_TrendData> trends;
 
-  const _AttendanceAnalytics({required this.trends});
+  const _AttendanceAnalytics({required this.stats, required this.trends});
 
   @override
   Widget build(BuildContext context) {
@@ -1015,10 +973,10 @@ class _AttendanceAnalytics extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _ProgressLine(
+          _ProgressLine(
             label: 'Weekly attendance progress',
-            valueLabel: '78% this week',
-            value: 0.78,
+            valueLabel: '${stats.attendancePercentage}% overall',
+            value: stats.attendancePercentage / 100,
           ),
           const SizedBox(height: AppSpacing.xl),
           LayoutBuilder(
@@ -1046,7 +1004,7 @@ class _AttendanceAnalytics extends StatelessWidget {
             },
           ),
           const SizedBox(height: AppSpacing.xl),
-          const _OverallRateCard(),
+          _OverallRateCard(stats: stats),
         ],
       ),
     );
@@ -1146,7 +1104,9 @@ class _TrendCard extends StatelessWidget {
 }
 
 class _OverallRateCard extends StatelessWidget {
-  const _OverallRateCard();
+  final _AttendanceStats stats;
+
+  const _OverallRateCard({required this.stats});
 
   @override
   Widget build(BuildContext context) {
@@ -1158,9 +1118,9 @@ class _OverallRateCard extends StatelessWidget {
         borderRadius: AppSpacing.radiusLg,
         border: Border.all(color: AppColors.border),
       ),
-      child: const Text(
-        'Overall attendance rate: 83% across all active batches this month.',
-        style: TextStyle(
+      child: Text(
+        'Overall attendance rate: ${stats.attendancePercentage}% across ${stats.totalAttendanceDays} attendance records.',
+        style: const TextStyle(
           color: AppColors.textDark,
           fontWeight: FontWeight.w800,
           height: 1.4,
@@ -1285,6 +1245,105 @@ class _SoftCard extends StatelessWidget {
   }
 }
 
+class _AttendanceStats {
+  final int totalStudents;
+  final int presentToday;
+  final int absentToday;
+  final int attendancePercentage;
+  final int totalAttendanceDays;
+
+  const _AttendanceStats({
+    required this.totalStudents,
+    required this.presentToday,
+    required this.absentToday,
+    required this.attendancePercentage,
+    required this.totalAttendanceDays,
+  });
+
+  factory _AttendanceStats.fromData(
+    List<StudentModel> students,
+    List<AttendanceModel> records,
+  ) {
+    final studentIds = students.map((student) => student.id).toSet();
+    final presentStudentIds =
+        records
+            .where(_isPresentToday)
+            .map((record) => record.studentId)
+            .where(studentIds.contains)
+            .toSet();
+    final presentRecords = records.where((record) => record.isPresent).length;
+    final attendancePercentage =
+        records.isEmpty ? 0 : ((presentRecords / records.length) * 100).round();
+
+    return _AttendanceStats(
+      totalStudents: students.length,
+      presentToday: presentStudentIds.length,
+      absentToday: students.length - presentStudentIds.length,
+      attendancePercentage: attendancePercentage,
+      totalAttendanceDays: records.length,
+    );
+  }
+}
+
+List<_BatchData> _buildBatchData(List<_AttendanceStudent> students) {
+  final batches = <String, List<_AttendanceStudent>>{};
+  for (final student in students) {
+    batches.putIfAbsent(student.batch, () => []).add(student);
+  }
+
+  return batches.entries.map((entry) {
+    final totalStudents = entry.value.length;
+    final presentCount =
+        entry.value.where((student) => student.status == 'Present').length;
+    final percentage =
+        totalStudents == 0 ? 0 : ((presentCount / totalStudents) * 100).round();
+
+    return _BatchData(
+      entry.key,
+      totalStudents.toString(),
+      presentCount.toString(),
+      '$percentage%',
+    );
+  }).toList();
+}
+
+List<_TrendData> _buildTrendData(List<AttendanceModel> records) {
+  final recordsByDate = <DateTime, List<AttendanceModel>>{};
+  for (final record in records) {
+    final date = record.attendanceDate;
+    if (date == null) {
+      continue;
+    }
+
+    recordsByDate.putIfAbsent(_dateOnly(date), () => []).add(record);
+  }
+
+  final dates = recordsByDate.keys.toList()..sort((a, b) => b.compareTo(a));
+  return dates.take(3).map((date) {
+    final dateRecords = recordsByDate[date] ?? [];
+    final presentCount = dateRecords.where((record) => record.isPresent).length;
+    final percentage =
+        dateRecords.isEmpty
+            ? 0
+            : ((presentCount / dateRecords.length) * 100).round();
+
+    return _TrendData(_formatDate(date), '$percentage%', Icons.show_chart);
+  }).toList();
+}
+
+bool _isPresentToday(AttendanceModel record) {
+  final date = record.attendanceDate;
+  if (date == null || !record.isPresent) {
+    return false;
+  }
+
+  return _dateOnly(date) == _dateOnly(DateTime.now());
+}
+
+DateTime _dateOnly(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
+}
+
 class _AttendanceStudent {
   final String id;
   final String name;
@@ -1311,7 +1370,9 @@ class _AttendanceStudent {
     AttendanceProvider attendanceProvider,
   ) {
     final isPresent = attendanceProvider.isPresentToday(student.id);
-    final attendedCount = attendanceProvider.attendanceCount(student.id);
+    final attendancePercentage = attendanceProvider.attendancePercentage(
+      student.id,
+    );
 
     return _AttendanceStudent(
       id: student.id,
@@ -1320,8 +1381,7 @@ class _AttendanceStudent {
       batch: _valueOrDash(student.preferredBatch),
       mobile: _valueOrDash(student.mobileNumber),
       status: isPresent ? 'Present' : 'Absent',
-      attendancePercent:
-          attendedCount == 0 ? '0%' : '${(attendedCount * 10).clamp(0, 100)}%',
+      attendancePercent: '$attendancePercentage%',
       lastAttended: _formatDate(
         attendanceProvider.lastAttendedDate(student.id),
       ),

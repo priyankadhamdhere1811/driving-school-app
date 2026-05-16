@@ -13,6 +13,17 @@ class AttendanceService {
     : _client = client ?? Supabase.instance.client,
       _random = random ?? Random();
 
+  Future<List<AttendanceModel>> fetchAttendance() async {
+    final response = await _client
+        .from('attendance_records')
+        .select()
+        .order('attendance_date', ascending: false);
+
+    return response
+        .map((row) => AttendanceModel.fromMap(Map<String, dynamic>.from(row)))
+        .toList();
+  }
+
   Future<String> generateOtp(String studentId) async {
     final otp = (_random.nextInt(900000) + 100000).toString();
     final expiresAt = DateTime.now().add(const Duration(minutes: 5));

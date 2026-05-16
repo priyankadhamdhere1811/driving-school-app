@@ -10,6 +10,7 @@ class AttendanceProvider extends ChangeNotifier {
     : _attendanceService = attendanceService ?? AttendanceService();
 
   final List<AttendanceModel> _attendanceRecords = [];
+  bool _isLoading = false;
   String? _loadingStudentId;
   String? _verifyingStudentId;
   String? _errorMessage;
@@ -18,12 +19,33 @@ class AttendanceProvider extends ChangeNotifier {
 
   List<AttendanceModel> get attendanceRecords =>
       List.unmodifiable(_attendanceRecords);
+  bool get isLoading => _isLoading;
   String? get loadingStudentId => _loadingStudentId;
   String? get verifyingStudentId => _verifyingStudentId;
   String? get errorMessage => _errorMessage;
   String? get generatedOtpForTesting => _generatedOtpForTesting;
   String? get generatedOtpStudentId => _generatedOtpStudentId;
   int get presentToday => _attendanceRecords.where(_isPresentToday).length;
+
+  Future<bool> fetchAttendance() async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final fetchedRecords = await _attendanceService.fetchAttendance();
+      _attendanceRecords
+        ..clear()
+        ..addAll(fetchedRecords);
+      return true;
+    } catch (error) {
+      _errorMessage = 'Unable to load attendance. Please try again.';
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
   Future<bool> generateOtp(String studentId) async {
     _loadingStudentId = studentId;
@@ -53,7 +75,7 @@ class AttendanceProvider extends ChangeNotifier {
       await _attendanceService.verifyOtpAndMarkAttendance(studentId, otp);
       _generatedOtpForTesting = null;
       _generatedOtpStudentId = null;
-      await _refreshStudentAttendance(studentId);
+      await fetchAttendance();
       return true;
     } catch (error) {
       _errorMessage = error.toString().replaceFirst('Exception: ', '');
@@ -110,8 +132,24 @@ class AttendanceProvider extends ChangeNotifier {
         .length;
   }
 
+  int attendanceTotalCount(String studentId) {
+    return _attendanceRecords
+        .where((record) => record.studentId == studentId)
+        .length;
+  }
+
+  int attendancePercentage(String studentId) {
+    final totalCount = attendanceTotalCount(studentId);
+    if (totalCount == 0) {
+      return 0;
+    }
+
+    return ((attendanceCount(studentId) / totalCount) * 100).round();
+  }
+
   void resetAttendance() {
     _attendanceRecords.clear();
+    _isLoading = false;
     _loadingStudentId = null;
     _verifyingStudentId = null;
     _generatedOtpForTesting = null;
