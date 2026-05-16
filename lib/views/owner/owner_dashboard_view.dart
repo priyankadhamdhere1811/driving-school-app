@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/payment_model.dart';
 import '../../models/reminder_model.dart';
+import '../../models/student_model.dart';
+import '../../providers/attendance_provider.dart';
+import '../../providers/payment_provider.dart';
 import '../../providers/reminder_provider.dart';
+import '../../providers/student_provider.dart';
 import '../../utils/app_colors.dart';
 import '../../utils/app_spacing.dart';
 import '../../utils/app_text_styles.dart';
@@ -32,6 +37,9 @@ class _DashboardContentState extends State<_DashboardContent> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        context.read<StudentProvider>().fetchStudents();
+        context.read<PaymentProvider>().fetchPayments();
+        context.read<AttendanceProvider>().fetchAttendance();
         context.read<ReminderProvider>().fetchReminders();
       }
     });
@@ -39,44 +47,6 @@ class _DashboardContentState extends State<_DashboardContent> {
 
   @override
   Widget build(BuildContext context) {
-    final cards = [
-      const _MetricData(
-        'Total Students',
-        '128',
-        '+12 this month',
-        Icons.people_outline,
-        AppColors.primary,
-      ),
-      const _MetricData(
-        'Pending Payments',
-        'Rs 42,500',
-        '18 dues open',
-        Icons.account_balance_wallet_outlined,
-        AppColors.accent,
-      ),
-      const _MetricData(
-        "Today's Attendance",
-        '34 / 42',
-        '81% present',
-        Icons.fact_check_outlined,
-        AppColors.ctaGreen,
-      ),
-      const _MetricData(
-        'Courses Ending Soon',
-        '9',
-        'Next 7 days',
-        Icons.event_available_outlined,
-        AppColors.darkRed,
-      ),
-      const _MetricData(
-        'New Enquiries',
-        '16',
-        '5 need callback',
-        Icons.mark_email_unread_outlined,
-        AppColors.primary,
-      ),
-    ];
-
     return SingleChildScrollView(
       padding: AppSpacing.ownerDashboardPadding,
       child: Center(
@@ -84,47 +54,87 @@ class _DashboardContentState extends State<_DashboardContent> {
           constraints: const BoxConstraints(
             maxWidth: AppSpacing.ownerMaxContentWidth,
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _HeaderBlock(),
-              const SizedBox(height: AppSpacing.sectionX),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final width = constraints.maxWidth;
-                  final columns = width >= 760 ? 2 : 1;
-                  final spacing = columns == 1 ? AppSpacing.md : AppSpacing.xl;
-                  final cardWidth =
-                      columns == 1 ? width : (width - spacing) / columns;
+          child: Consumer4<
+            StudentProvider,
+            PaymentProvider,
+            AttendanceProvider,
+            ReminderProvider
+          >(
+            builder: (
+              context,
+              studentProvider,
+              paymentProvider,
+              attendanceProvider,
+              reminderProvider,
+              child,
+            ) {
+              final students = studentProvider.students;
+              final payments = paymentProvider.payments;
+              final cards = _buildMetricCards(students, attendanceProvider);
 
-                  return Wrap(
-                    spacing: spacing,
-                    runSpacing: spacing,
-                    children:
-                        cards
-                            .map(
-                              (card) => SizedBox(
-                                width: cardWidth,
-                                child: OwnerStatCard(
-                                  width: double.infinity,
-                                  title: card.title,
-                                  value: card.value,
-                                  subtitle: card.subtitle,
-                                  icon: card.icon,
-                                  color: card.color,
-                                ),
-                              ),
-                            )
-                            .toList(),
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.sectionX),
-              const _DashboardSections(),
-            ],
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _HeaderBlock(),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _MetricCards(cards: cards),
+                  const SizedBox(height: AppSpacing.sectionX),
+                  _DashboardSections(
+                    recentPayments: _recentPaymentRows(payments, students),
+                    duePayments: _upcomingDueRows(students),
+                    reminders: reminderProvider.reminders,
+                    paymentsLoading: paymentProvider.isLoading,
+                    studentsLoading: studentProvider.isLoading,
+                    remindersLoading: reminderProvider.isLoading,
+                    paymentsError: paymentProvider.errorMessage,
+                    studentsError: studentProvider.errorMessage,
+                    remindersError: reminderProvider.errorMessage,
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MetricCards extends StatelessWidget {
+  final List<_MetricData> cards;
+
+  const _MetricCards({required this.cards});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final columns = width >= 760 ? 2 : 1;
+        final spacing = columns == 1 ? AppSpacing.md : AppSpacing.xl;
+        final cardWidth = columns == 1 ? width : (width - spacing) / columns;
+
+        return Wrap(
+          spacing: spacing,
+          runSpacing: spacing,
+          children:
+              cards
+                  .map(
+                    (card) => SizedBox(
+                      width: cardWidth,
+                      child: OwnerStatCard(
+                        width: double.infinity,
+                        title: card.title,
+                        value: card.value,
+                        subtitle: card.subtitle,
+                        icon: card.icon,
+                        color: card.color,
+                      ),
+                    ),
+                  )
+                  .toList(),
+        );
+      },
     );
   }
 }
@@ -154,70 +164,61 @@ class _HeaderBlock extends StatelessWidget {
 }
 
 class _DashboardSections extends StatelessWidget {
-  const _DashboardSections();
+  final List<_InfoRow> recentPayments;
+  final List<_InfoRow> duePayments;
+  final List<ReminderModel> reminders;
+  final bool paymentsLoading;
+  final bool studentsLoading;
+  final bool remindersLoading;
+  final String? paymentsError;
+  final String? studentsError;
+  final String? remindersError;
+
+  const _DashboardSections({
+    required this.recentPayments,
+    required this.duePayments,
+    required this.reminders,
+    required this.paymentsLoading,
+    required this.studentsLoading,
+    required this.remindersLoading,
+    required this.paymentsError,
+    required this.studentsError,
+    required this.remindersError,
+  });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= 920;
-        final recentPayments = const _InfoPanel(
+        final recentPaymentsCard = _InfoPanel(
           title: 'Recent Payments',
-          rows: [
-            _InfoRow('Amit Sharma', 'Beginner Course', 'Rs 5,000', 'Paid'),
-            _InfoRow('Neha Singh', 'Advanced Course', 'Rs 3,500', 'Paid'),
-            _InfoRow('Vikram Patel', 'Licence Assist', 'Rs 4,500', 'Paid'),
-          ],
+          rows: recentPayments,
+          isLoading: paymentsLoading,
+          errorMessage: paymentsError,
+          emptyMessage: 'No recent payments found.',
         );
-        final duePayments = Consumer<ReminderProvider>(
-          builder:
-              (context, reminderProvider, child) => _ReminderPanel(
-                reminders: reminderProvider.reminders,
-                isLoading: reminderProvider.isLoading,
-                errorMessage: reminderProvider.errorMessage,
-              ),
+        final duePaymentsCard = _InfoPanel(
+          title: 'Upcoming Due Payments',
+          rows: duePayments,
+          isLoading: studentsLoading,
+          errorMessage: studentsError,
+          emptyMessage: 'No upcoming dues found.',
         );
-        final enquiries = const _InfoPanel(
-          title: 'Recent Enquiries',
-          rows: [
-            _InfoRow('Karan Mehta', 'Car training', 'Today', 'Callback'),
-            _InfoRow('Anjali Rao', 'Licence help', 'Yesterday', 'New'),
-            _InfoRow('Manish Jain', 'Weekend batch', 'May 7', 'New'),
-          ],
+        final remindersCard = _ReminderPanel(
+          reminders: reminders,
+          isLoading: remindersLoading,
+          errorMessage: remindersError,
         );
 
         if (!isWide) {
           return Column(
             children: [
-              const _InfoPanel(
-                title: 'Recent Payments',
-                rows: [
-                  _InfoRow(
-                    'Amit Sharma',
-                    'Beginner Course',
-                    'Rs 5,000',
-                    'Paid',
-                  ),
-                  _InfoRow('Neha Singh', 'Advanced Course', 'Rs 3,500', 'Paid'),
-                  _InfoRow(
-                    'Vikram Patel',
-                    'Licence Assist',
-                    'Rs 4,500',
-                    'Paid',
-                  ),
-                ],
-              ),
+              recentPaymentsCard,
               const SizedBox(height: AppSpacing.xl),
-              duePayments,
+              duePaymentsCard,
               const SizedBox(height: AppSpacing.xl),
-              const _InfoPanel(
-                title: 'Recent Enquiries',
-                rows: [
-                  _InfoRow('Karan Mehta', 'Car training', 'Today', 'Callback'),
-                  _InfoRow('Anjali Rao', 'Licence help', 'Yesterday', 'New'),
-                  _InfoRow('Manish Jain', 'Weekend batch', 'May 7', 'New'),
-                ],
-              ),
+              remindersCard,
             ],
           );
         }
@@ -225,11 +226,11 @@ class _DashboardSections extends StatelessWidget {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(child: recentPayments),
+            Expanded(child: recentPaymentsCard),
             const SizedBox(width: AppSpacing.xl),
-            Expanded(child: duePayments),
+            Expanded(child: duePaymentsCard),
             const SizedBox(width: AppSpacing.xl),
-            Expanded(child: enquiries),
+            Expanded(child: remindersCard),
           ],
         );
       },
@@ -240,18 +241,39 @@ class _DashboardSections extends StatelessWidget {
 class _InfoPanel extends StatelessWidget {
   final String title;
   final List<_InfoRow> rows;
+  final bool isLoading;
+  final String? errorMessage;
+  final String emptyMessage;
 
-  const _InfoPanel({required this.title, required this.rows});
+  const _InfoPanel({
+    required this.title,
+    required this.rows,
+    this.isLoading = false,
+    this.errorMessage,
+    this.emptyMessage = 'No records found.',
+  });
 
   @override
   Widget build(BuildContext context) {
+    Widget child;
+
+    if (isLoading) {
+      child = const _InlineMessage(message: 'Loading...');
+    } else if (errorMessage != null) {
+      child = _InlineMessage(message: errorMessage!, isError: true);
+    } else if (rows.isEmpty) {
+      child = _InlineMessage(message: emptyMessage);
+    } else {
+      child = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [...rows.map((row) => _InfoListTile(row: row))],
+      );
+    }
+
     return OwnerSectionCard(
       title: title,
       padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [...rows.map((row) => _InfoListTile(row: row))],
-      ),
+      child: child,
     );
   }
 }
@@ -508,6 +530,224 @@ class _InfoListTile extends StatelessWidget {
       ),
     );
   }
+}
+
+class _InlineMessage extends StatelessWidget {
+  final String message;
+  final bool isError;
+
+  const _InlineMessage({required this.message, this.isError = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: TextStyle(
+        color: isError ? AppColors.darkRed : AppColors.textGray,
+        fontWeight: FontWeight.w700,
+      ),
+    );
+  }
+}
+
+List<_MetricData> _buildMetricCards(
+  List<StudentModel> students,
+  AttendanceProvider attendanceProvider,
+) {
+  final pendingAmount = students.fold<num>(
+    0,
+    (total, student) => total + student.remainingFees,
+  );
+  final presentToday = _presentStudentIdsToday(attendanceProvider, students);
+  final attendancePercent =
+      students.isEmpty
+          ? 0
+          : ((presentToday.length / students.length) * 100).round();
+  final endingSoon = students.where(_isCourseEndingSoon).length;
+
+  return [
+    _MetricData(
+      'Total Students',
+      students.length.toString(),
+      'Active records',
+      Icons.people_outline,
+      AppColors.primary,
+    ),
+    _MetricData(
+      'Pending Payments',
+      _formatAmount(pendingAmount),
+      '${students.where((student) => student.remainingFees > 0).length} dues open',
+      Icons.account_balance_wallet_outlined,
+      AppColors.accent,
+    ),
+    _MetricData(
+      "Today's Attendance",
+      '${presentToday.length} / ${students.length}',
+      '$attendancePercent% present',
+      Icons.fact_check_outlined,
+      AppColors.ctaGreen,
+    ),
+    _MetricData(
+      'Courses Ending Soon',
+      endingSoon.toString(),
+      'Next 7 days',
+      Icons.event_available_outlined,
+      AppColors.darkRed,
+    ),
+    const _MetricData(
+      'New Enquiries',
+      '16',
+      '5 need callback',
+      Icons.mark_email_unread_outlined,
+      AppColors.primary,
+    ),
+  ];
+}
+
+List<_InfoRow> _recentPaymentRows(
+  List<PaymentModel> payments,
+  List<StudentModel> students,
+) {
+  final studentsById = {for (final student in students) student.id: student};
+  final sortedPayments = [...payments]..sort((a, b) {
+    final aDate = a.paymentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final bDate = b.paymentDate ?? DateTime.fromMillisecondsSinceEpoch(0);
+    return bDate.compareTo(aDate);
+  });
+
+  return sortedPayments.take(4).map((payment) {
+    final student = studentsById[payment.studentId];
+    return _InfoRow(
+      student?.fullName ?? 'Unknown Student',
+      payment.paymentMethod.isEmpty
+          ? _formatDate(payment.paymentDate)
+          : payment.paymentMethod,
+      payment.amountText,
+      'Paid',
+    );
+  }).toList();
+}
+
+List<_InfoRow> _upcomingDueRows(List<StudentModel> students) {
+  final dueStudents =
+      students.where((student) => student.remainingFees > 0).toList()
+        ..sort((a, b) {
+          final aDate = a.nextPaymentDate ?? DateTime(9999);
+          final bDate = b.nextPaymentDate ?? DateTime(9999);
+          return aDate.compareTo(bDate);
+        });
+
+  return dueStudents.take(4).map((student) {
+    return _InfoRow(
+      student.fullName,
+      _dueDateLabel(student.nextPaymentDate),
+      student.remainingFeesText,
+      _dueStatus(student),
+    );
+  }).toList();
+}
+
+Set<String> _presentStudentIdsToday(
+  AttendanceProvider attendanceProvider,
+  List<StudentModel> students,
+) {
+  final studentIds = students.map((student) => student.id).toSet();
+  return attendanceProvider.attendanceRecords
+      .where((record) {
+        final date = record.attendanceDate;
+        final now = DateTime.now();
+
+        return record.isPresent &&
+            date != null &&
+            date.year == now.year &&
+            date.month == now.month &&
+            date.day == now.day &&
+            studentIds.contains(record.studentId);
+      })
+      .map((record) => record.studentId)
+      .toSet();
+}
+
+bool _isCourseEndingSoon(StudentModel student) {
+  final startDate = student.startDate;
+  final durationDays = _durationInDays(student.duration);
+  if (startDate == null || durationDays == null) {
+    return false;
+  }
+
+  final today = _dateOnly(DateTime.now());
+  final endDate = _dateOnly(startDate.add(Duration(days: durationDays)));
+  final nextWeek = today.add(const Duration(days: 7));
+  return !endDate.isBefore(today) && !endDate.isAfter(nextWeek);
+}
+
+int? _durationInDays(String duration) {
+  final value = int.tryParse(
+    RegExp(r'\d+').firstMatch(duration)?.group(0) ?? '',
+  );
+  if (value == null) {
+    return null;
+  }
+
+  final lowerDuration = duration.toLowerCase();
+  if (lowerDuration.contains('month')) {
+    return value * 30;
+  }
+  if (lowerDuration.contains('week')) {
+    return value * 7;
+  }
+  return value;
+}
+
+String _dueStatus(StudentModel student) {
+  final nextPaymentDate = student.nextPaymentDate;
+  if (nextPaymentDate != null &&
+      _dateOnly(nextPaymentDate).isBefore(_dateOnly(DateTime.now()))) {
+    return 'Overdue';
+  }
+
+  return 'Pending';
+}
+
+String _dueDateLabel(DateTime? date) {
+  if (date == null) {
+    return 'No due date';
+  }
+
+  return 'Due ${_formatDate(date)}';
+}
+
+String _formatDate(DateTime? date) {
+  if (date == null) {
+    return '-';
+  }
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  final day = date.day.toString().padLeft(2, '0');
+  return '$day ${months[date.month - 1]} ${date.year}';
+}
+
+String _formatAmount(num value) {
+  final amount =
+      value % 1 == 0 ? value.toInt().toString() : value.toStringAsFixed(2);
+  return 'Rs $amount';
+}
+
+DateTime _dateOnly(DateTime date) {
+  return DateTime(date.year, date.month, date.day);
 }
 
 class _MetricData {
