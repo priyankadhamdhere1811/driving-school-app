@@ -1,11 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../../models/payment_model.dart';
+import '../../../models/student_prefill_model.dart';
 import '../../../models/student_model.dart';
+import '../../../providers/enquiry_provider.dart';
+import '../../../providers/payment_provider.dart';
 import '../../../providers/student_provider.dart';
+import '../../../routes/app_routes.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
+import '../../../utils/student_form_validators.dart';
+
+const _courseOptions = [
+  'Beginner Driving',
+  'Advanced Course',
+  'Licence Assistance',
+];
 
 class AddStudentView extends StatefulWidget {
   const AddStudentView({super.key});
@@ -30,12 +42,33 @@ class _AddStudentViewState extends State<AddStudentView> {
   final _notesController = TextEditingController();
   String _course = 'Beginner Driving';
   String _preferredBatch = 'Morning Batch';
+  StudentPrefillModel? _prefill;
+  bool _didApplyPrefill = false;
 
   @override
   void initState() {
     super.initState();
     _totalFeesController.addListener(_updateRemainingFees);
     _advancePaidController.addListener(_updateRemainingFees);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didApplyPrefill) {
+      return;
+    }
+
+    final arguments = ModalRoute.of(context)?.settings.arguments;
+    if (arguments is StudentPrefillModel) {
+      _prefill = arguments;
+      _fullNameController.text = arguments.fullName;
+      _mobileController.text = arguments.mobileNumber;
+      _notesController.text = arguments.notes;
+      _course = _normalizeCourse(arguments.course);
+    }
+
+    _didApplyPrefill = true;
   }
 
   @override
@@ -115,7 +148,7 @@ class _AddStudentViewState extends State<AddStudentView> {
                     },
                   ),
                   const SizedBox(height: 14),
-                  _ActionBar(onSave: _saveStudent),
+                  _ActionBar(onCancel: _cancel, onSave: _saveStudent),
                 ],
               ),
             ),
@@ -131,20 +164,76 @@ class _AddStudentViewState extends State<AddStudentView> {
     }
 
     final totalFees = num.tryParse(_totalFeesController.text.trim()) ?? 0;
-    if (totalFees <= 0) {
+    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
+    final remainingFees = totalFees - advancePaid;
+    final normalizedMobile = StudentFormValidators.normalizeIndianMobile(
+      _mobileController.text,
+    );
+    final alternateMobile = _alternateMobileController.text.trim();
+    final normalizedAlternateMobile =
+        alternateMobile.isEmpty
+            ? ''
+            : StudentFormValidators.normalizeIndianMobile(alternateMobile);
+
+    if (normalizedMobile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Total fees must be greater than 0.')),
+        const SnackBar(content: Text('Enter a valid mobile number.')),
       );
       return;
     }
 
-    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
-    final remainingFees = totalFees - advancePaid;
+    if (advancePaid > totalFees) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Advance paid cannot be greater than total fees.'),
+        ),
+      );
+      return;
+    }
+
+    if (remainingFees < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remaining fees cannot be negative.')),
+      );
+      return;
+    }
+
+    final studentProvider = context.read<StudentProvider>();
+    final loadedStudents = await studentProvider.fetchStudents();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!loadedStudents) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            studentProvider.errorMessage ??
+                'Unable to verify duplicate mobile number.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (StudentFormValidators.hasDuplicateMobile(
+      studentProvider.students,
+      normalizedMobile,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A student with this mobile number already exists.'),
+        ),
+      );
+      return;
+    }
+
     final student = StudentModel(
       id: '',
       fullName: _fullNameController.text.trim(),
-      mobileNumber: _mobileController.text.trim(),
-      alternateMobile: _alternateMobileController.text.trim(),
+      mobileNumber: normalizedMobile,
+      alternateMobile: normalizedAlternateMobile ?? '',
       areaVillage: _areaVillageController.text.trim(),
       address: _addressController.text.trim(),
       course: _course,
@@ -161,24 +250,73 @@ class _AddStudentViewState extends State<AddStudentView> {
       notes: _notesController.text.trim(),
     );
 
-    final provider = context.read<StudentProvider>();
-    final success = await provider.createStudent(student);
+    final paymentProvider = context.read<PaymentProvider>();
+    final enquiryProvider = context.read<EnquiryProvider>();
+    final success = await studentProvider.createStudent(student);
 
     if (!mounted) {
       return;
     }
 
     if (success) {
+      final createdStudent = studentProvider.lastCreatedStudent;
+      if (createdStudent != null && advancePaid > 0) {
+        final paymentSaved = await paymentProvider.createPayment(
+          PaymentModel(
+            id: '',
+            studentId: createdStudent.id,
+            amount: advancePaid,
+            paymentMethod: 'Cash',
+            paymentDate: DateTime.now(),
+            notes: 'Initial advance payment',
+          ),
+        );
+
+        await studentProvider.fetchStudents();
+
+        if (!mounted) {
+          return;
+        }
+
+        if (!paymentSaved) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                paymentProvider.errorMessage ??
+                    'Student saved, but initial payment was not recorded.',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      final sourceEnquiryId = _prefill?.sourceEnquiryId;
+      if (sourceEnquiryId != null && sourceEnquiryId.isNotEmpty) {
+        await enquiryProvider.updateEnquiryStatus(sourceEnquiryId, 'Converted');
+      }
+
+      if (!mounted) {
+        return;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Student saved successfully.')),
       );
-      Navigator.of(context).pushReplacementNamed('/owner/students');
+      final createdStudentId = studentProvider.lastCreatedStudent?.id ?? '';
+      final route =
+          _isEnquiryConversion && createdStudentId.isNotEmpty
+              ? '/owner/students/${Uri.encodeComponent(createdStudentId)}'
+              : AppRoutes.ownerStudents;
+      Navigator.of(context).pushReplacementNamed(route);
       return;
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(provider.errorMessage ?? 'Unable to save student.'),
+        content: Text(
+          studentProvider.errorMessage ?? 'Unable to save student.',
+        ),
       ),
     );
   }
@@ -189,6 +327,25 @@ class _AddStudentViewState extends State<AddStudentView> {
     }
 
     return DateTime.tryParse(value);
+  }
+
+  bool get _isEnquiryConversion =>
+      _prefill?.sourceEnquiryId?.trim().isNotEmpty ?? false;
+
+  void _cancel() {
+    Navigator.of(context).pushReplacementNamed(
+      _isEnquiryConversion ? AppRoutes.enquiries : AppRoutes.ownerStudents,
+    );
+  }
+
+  String _normalizeCourse(String value) {
+    final trimmed = value.trim();
+    return switch (trimmed) {
+      'Beginner Driving Course' => 'Beginner Driving',
+      'Licence Assistance Course' => 'Licence Assistance',
+      _ when _courseOptions.contains(trimmed) => trimmed,
+      _ => _course,
+    };
   }
 }
 
@@ -299,6 +456,7 @@ class _StudentForm extends StatelessWidget {
               icon: Icons.person_outline,
               controller: fullNameController,
               requiredField: true,
+              validator: StudentFormValidators.validateName,
             ),
             _InputField(
               label: 'Mobile Number',
@@ -306,6 +464,7 @@ class _StudentForm extends StatelessWidget {
               controller: mobileController,
               requiredField: true,
               keyboardType: TextInputType.phone,
+              validator: StudentFormValidators.validateMobile,
             ),
             _InputField(
               label: 'Alternate Mobile',
@@ -313,6 +472,11 @@ class _StudentForm extends StatelessWidget {
               controller: alternateMobileController,
               helperText: 'Optional',
               keyboardType: TextInputType.phone,
+              validator:
+                  (value) => StudentFormValidators.validateMobile(
+                    value,
+                    required: false,
+                  ),
             ),
             _InputField(
               label: 'Area / Village',
@@ -339,6 +503,9 @@ class _StudentForm extends StatelessWidget {
               label: 'Duration',
               icon: Icons.timer_outlined,
               controller: durationController,
+              requiredField: true,
+              keyboardType: TextInputType.number,
+              validator: StudentFormValidators.validateDuration,
             ),
             _InputField(
               label: 'Start Date',
@@ -367,12 +534,22 @@ class _StudentForm extends StatelessWidget {
               controller: totalFeesController,
               requiredField: true,
               keyboardType: TextInputType.number,
+              validator:
+                  (value) => StudentFormValidators.validatePositiveAmount(
+                    value,
+                    'Total fees',
+                  ),
             ),
             _InputField(
               label: 'Advance Paid',
               icon: Icons.account_balance_wallet_outlined,
               controller: advancePaidController,
               keyboardType: TextInputType.number,
+              validator:
+                  (value) => StudentFormValidators.validateNonNegativeAmount(
+                    value?.trim().isEmpty ?? true ? '0' : value,
+                    'Advance paid',
+                  ),
             ),
             _InputField(
               label: 'Remaining Fees',
@@ -381,6 +558,11 @@ class _StudentForm extends StatelessWidget {
               readOnly: true,
               highlighted: true,
               helperText: 'Auto calculated from total fees and advance paid',
+              validator:
+                  (value) => StudentFormValidators.validateNonNegativeAmount(
+                    value,
+                    'Remaining fees',
+                  ),
             ),
             _InputField(
               label: 'Next Payment Date',
@@ -537,6 +719,7 @@ class _InputField extends StatelessWidget {
   final bool requiredField;
   final String? helperText;
   final TextInputType? keyboardType;
+  final FormFieldValidator<String>? validator;
 
   const _InputField({
     required this.label,
@@ -549,6 +732,7 @@ class _InputField extends StatelessWidget {
     this.requiredField = false,
     this.helperText,
     this.keyboardType,
+    this.validator,
   });
 
   @override
@@ -563,6 +747,10 @@ class _InputField extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       validator: (value) {
+        final customError = validator?.call(value);
+        if (customError != null) {
+          return customError;
+        }
         if (requiredField && (value == null || value.trim().isEmpty)) {
           return '$label is required';
         }
@@ -615,19 +803,9 @@ class _CourseDropdown extends StatelessWidget {
           vertical: AppSpacing.md,
         ),
       ),
-      items: const [
-        DropdownMenuItem(
-          value: 'Beginner Driving',
-          child: Text('Beginner Driving'),
-        ),
-        DropdownMenuItem(
-          value: 'Advanced Course',
-          child: Text('Advanced Course'),
-        ),
-        DropdownMenuItem(
-          value: 'Licence Assistance',
-          child: Text('Licence Assistance'),
-        ),
+      items: [
+        for (final course in _courseOptions)
+          DropdownMenuItem(value: course, child: Text(course)),
       ],
       onChanged: onChanged,
     );
@@ -763,9 +941,10 @@ class _PaymentSummaryItem extends StatelessWidget {
 }
 
 class _ActionBar extends StatelessWidget {
+  final VoidCallback onCancel;
   final VoidCallback onSave;
 
-  const _ActionBar({required this.onSave});
+  const _ActionBar({required this.onCancel, required this.onSave});
 
   @override
   Widget build(BuildContext context) {
@@ -784,15 +963,16 @@ class _ActionBar extends StatelessWidget {
           ),
         ],
       ),
-      child: _ActionButtons(onSave: onSave),
+      child: _ActionButtons(onCancel: onCancel, onSave: onSave),
     );
   }
 }
 
 class _ActionButtons extends StatelessWidget {
+  final VoidCallback onCancel;
   final VoidCallback onSave;
 
-  const _ActionButtons({required this.onSave});
+  const _ActionButtons({required this.onCancel, required this.onSave});
 
   @override
   Widget build(BuildContext context) {
@@ -800,7 +980,7 @@ class _ActionButtons extends StatelessWidget {
       builder: (context, constraints) {
         final isNarrow = constraints.maxWidth < 520;
         final cancel = OutlinedButton.icon(
-          onPressed: () {},
+          onPressed: onCancel,
           icon: const Icon(Icons.close),
           label: const Text('Cancel'),
           style: OutlinedButton.styleFrom(

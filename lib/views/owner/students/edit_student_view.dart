@@ -6,6 +6,7 @@ import '../../../providers/student_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
+import '../../../utils/student_form_validators.dart';
 
 class EditStudentView extends StatefulWidget {
   final String studentId;
@@ -203,9 +204,69 @@ class _EditStudentViewState extends State<EditStudentView> {
     }
 
     final totalFees = num.tryParse(_totalFeesController.text.trim()) ?? 0;
-    if (totalFees <= 0) {
+    final advancePaid = num.tryParse(_advancePaidController.text.trim()) ?? 0;
+    final remainingFees =
+        num.tryParse(_remainingFeesController.text.trim()) ?? 0;
+    final normalizedMobile = StudentFormValidators.normalizeIndianMobile(
+      _mobileController.text,
+    );
+    final alternateMobile = _alternateMobileController.text.trim();
+    final normalizedAlternateMobile =
+        alternateMobile.isEmpty
+            ? ''
+            : StudentFormValidators.normalizeIndianMobile(alternateMobile);
+
+    if (normalizedMobile == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Total fees must be greater than 0.')),
+        const SnackBar(content: Text('Enter a valid mobile number.')),
+      );
+      return;
+    }
+
+    if (advancePaid > totalFees) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Advance paid cannot be greater than total fees.'),
+        ),
+      );
+      return;
+    }
+
+    if (remainingFees < 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Remaining fees cannot be negative.')),
+      );
+      return;
+    }
+
+    final provider = context.read<StudentProvider>();
+    final loadedStudents = await provider.fetchStudents();
+
+    if (!mounted) {
+      return;
+    }
+
+    if (!loadedStudents) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            provider.errorMessage ??
+                'Unable to verify duplicate mobile number.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (StudentFormValidators.hasDuplicateMobile(
+      provider.students,
+      normalizedMobile,
+      excludingStudentId: widget.studentId,
+    )) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A student with this mobile number already exists.'),
+        ),
       );
       return;
     }
@@ -213,15 +274,15 @@ class _EditStudentViewState extends State<EditStudentView> {
     final student = StudentModel(
       id: widget.studentId,
       fullName: _fullNameController.text.trim(),
-      mobileNumber: _mobileController.text.trim(),
-      alternateMobile: _alternateMobileController.text.trim(),
+      mobileNumber: normalizedMobile,
+      alternateMobile: normalizedAlternateMobile ?? '',
       areaVillage: _areaVillageController.text.trim(),
       address: _addressController.text.trim(),
       course: _course,
       duration: _durationController.text.trim(),
       totalFees: totalFees,
-      paidAmount: num.tryParse(_advancePaidController.text.trim()) ?? 0,
-      remainingFees: num.tryParse(_remainingFeesController.text.trim()) ?? 0,
+      paidAmount: advancePaid,
+      remainingFees: remainingFees,
       status: _status,
       preferredBatch: _preferredBatch,
       startDate: _parseDate(_startDateController.text.trim()),
@@ -231,7 +292,6 @@ class _EditStudentViewState extends State<EditStudentView> {
       notes: _notesController.text.trim(),
     );
 
-    final provider = context.read<StudentProvider>();
     final success = await provider.updateStudent(widget.studentId, student);
 
     if (!mounted) {
@@ -396,6 +456,7 @@ class _StudentForm extends StatelessWidget {
               icon: Icons.person_outline,
               controller: fullNameController,
               requiredField: true,
+              validator: StudentFormValidators.validateName,
             ),
             _InputField(
               label: 'Mobile Number',
@@ -403,6 +464,7 @@ class _StudentForm extends StatelessWidget {
               controller: mobileController,
               requiredField: true,
               keyboardType: TextInputType.phone,
+              validator: StudentFormValidators.validateMobile,
             ),
             _InputField(
               label: 'Alternate Mobile',
@@ -410,6 +472,11 @@ class _StudentForm extends StatelessWidget {
               controller: alternateMobileController,
               helperText: 'Optional',
               keyboardType: TextInputType.phone,
+              validator:
+                  (value) => StudentFormValidators.validateMobile(
+                    value,
+                    required: false,
+                  ),
             ),
             _InputField(
               label: 'Area / Village',
@@ -446,6 +513,9 @@ class _StudentForm extends StatelessWidget {
               label: 'Duration',
               icon: Icons.timer_outlined,
               controller: durationController,
+              requiredField: true,
+              keyboardType: TextInputType.number,
+              validator: StudentFormValidators.validateDuration,
             ),
             _InputField(
               label: 'Start Date',
@@ -481,12 +551,22 @@ class _StudentForm extends StatelessWidget {
               controller: totalFeesController,
               requiredField: true,
               keyboardType: TextInputType.number,
+              validator:
+                  (value) => StudentFormValidators.validatePositiveAmount(
+                    value,
+                    'Total fees',
+                  ),
             ),
             _InputField(
               label: 'Advance Paid',
               icon: Icons.account_balance_wallet_outlined,
               controller: advancePaidController,
               keyboardType: TextInputType.number,
+              validator:
+                  (value) => StudentFormValidators.validateNonNegativeAmount(
+                    value?.trim().isEmpty ?? true ? '0' : value,
+                    'Advance paid',
+                  ),
             ),
             _InputField(
               label: 'Remaining Fees',
@@ -494,6 +574,11 @@ class _StudentForm extends StatelessWidget {
               controller: remainingFeesController,
               highlighted: true,
               keyboardType: TextInputType.number,
+              validator:
+                  (value) => StudentFormValidators.validateNonNegativeAmount(
+                    value,
+                    'Remaining fees',
+                  ),
             ),
             _InputField(
               label: 'Next Payment Date',
@@ -655,6 +740,7 @@ class _InputField extends StatelessWidget {
   final bool requiredField;
   final String? helperText;
   final TextInputType? keyboardType;
+  final FormFieldValidator<String>? validator;
 
   const _InputField({
     required this.label,
@@ -666,6 +752,7 @@ class _InputField extends StatelessWidget {
     this.requiredField = false,
     this.helperText,
     this.keyboardType,
+    this.validator,
   });
 
   @override
@@ -679,6 +766,10 @@ class _InputField extends StatelessWidget {
         fontWeight: FontWeight.w600,
       ),
       validator: (value) {
+        final customError = validator?.call(value);
+        if (customError != null) {
+          return customError;
+        }
         if (requiredField && (value == null || value.trim().isEmpty)) {
           return '$label is required';
         }

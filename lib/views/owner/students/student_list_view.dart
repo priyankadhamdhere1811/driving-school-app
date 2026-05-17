@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../../models/student_model.dart';
 import '../../../providers/student_provider.dart';
+import '../../../routes/app_routes.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
@@ -175,7 +176,8 @@ class _PageHeader extends StatelessWidget {
                 ),
               ),
               FilledButton.icon(
-                onPressed: () {},
+                onPressed:
+                    () => Navigator.of(context).pushNamed(AppRoutes.addStudent),
                 icon: const Icon(Icons.person_add_alt_1),
                 label: const Text('Add Student'),
                 style: FilledButton.styleFrom(

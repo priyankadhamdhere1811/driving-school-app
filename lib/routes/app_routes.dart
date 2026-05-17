@@ -65,6 +65,20 @@ class AppRoutes {
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
     final uri = Uri.parse(settings.name ?? '');
 
+    if (uri.pathSegments.length == 3 &&
+        uri.pathSegments[0] == 'owner' &&
+        uri.pathSegments[1] == 'students' &&
+        uri.pathSegments[2] == 'add') {
+      return MaterialPageRoute(
+        settings: settings,
+        builder:
+            (context) => const OwnerLayout(
+              title: 'Add Student',
+              child: AddStudentView(),
+            ),
+      );
+    }
+
     if (uri.pathSegments.length == 4 &&
         uri.pathSegments[0] == 'owner' &&
         uri.pathSegments[1] == 'students' &&
@@ -85,17 +99,6 @@ class AppRoutes {
         uri.pathSegments[0] == 'owner' &&
         uri.pathSegments[1] == 'students') {
       final studentId = Uri.decodeComponent(uri.pathSegments[2]);
-
-      if (studentId == 'add') {
-        return MaterialPageRoute(
-          settings: settings,
-          builder:
-              (context) => const OwnerLayout(
-                title: 'Add Student',
-                child: AddStudentView(),
-              ),
-        );
-      }
 
       return MaterialPageRoute(
         settings: settings,

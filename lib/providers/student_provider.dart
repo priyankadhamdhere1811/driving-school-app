@@ -13,11 +13,13 @@ class StudentProvider extends ChangeNotifier {
 
   final List<StudentModel> _students = [];
   StudentModel? _selectedStudent;
+  StudentModel? _lastCreatedStudent;
   bool _isLoading = false;
   String? _errorMessage;
 
   List<StudentModel> get students => List.unmodifiable(_students);
   StudentModel? get selectedStudent => _selectedStudent;
+  StudentModel? get lastCreatedStudent => _lastCreatedStudent;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
@@ -44,11 +46,13 @@ class StudentProvider extends ChangeNotifier {
   Future<bool> createStudent(StudentModel student) async {
     _isLoading = true;
     _errorMessage = null;
+    _lastCreatedStudent = null;
     notifyListeners();
 
     try {
-      await _studentService.createStudent(student);
+      final createdStudent = await _studentService.createStudent(student);
       final fetchedStudents = await _studentService.fetchStudents();
+      _lastCreatedStudent = createdStudent;
       _students
         ..clear()
         ..addAll(fetchedStudents);

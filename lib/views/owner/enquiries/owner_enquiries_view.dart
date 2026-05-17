@@ -2,13 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../models/enquiry_model.dart';
+import '../../../models/student_prefill_model.dart';
 import '../../../providers/enquiry_provider.dart';
+import '../../../routes/app_routes.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
 import '../../../widgets/owner/owner_status_badge.dart';
 
 const _enquiryStatuses = ['New', 'Contacted', 'Converted'];
+const _convertToStudentAction = 'convert_to_student';
 
 class OwnerEnquiriesView extends StatefulWidget {
   const OwnerEnquiriesView({super.key});
@@ -275,25 +278,47 @@ class _StatusActions extends StatelessWidget {
         OwnerStatusBadge(status: enquiry.status),
         const SizedBox(width: AppSpacing.xs),
         PopupMenuButton<String>(
-          tooltip: 'Change status',
+          tooltip: 'Enquiry actions',
           initialValue:
               _enquiryStatuses.contains(enquiry.status) ? enquiry.status : null,
           icon: const Icon(Icons.more_vert, color: AppColors.textGray),
-          onSelected: (status) => _updateStatus(context, enquiry, status),
+          onSelected: (value) {
+            if (value == _convertToStudentAction) {
+              _convertToStudent(context, enquiry);
+              return;
+            }
+
+            _updateStatus(context, enquiry, value);
+          },
           itemBuilder:
-              (context) =>
-                  _enquiryStatuses
-                      .map(
-                        (status) => PopupMenuItem<String>(
-                          value: status,
-                          child: Text(status),
-                        ),
-                      )
-                      .toList(),
+              (context) => [
+                ..._enquiryStatuses.map(
+                  (status) =>
+                      PopupMenuItem<String>(value: status, child: Text(status)),
+                ),
+                const PopupMenuDivider(),
+                const PopupMenuItem<String>(
+                  value: _convertToStudentAction,
+                  child: Text('Convert to Student'),
+                ),
+              ],
         ),
       ],
     );
   }
+}
+
+void _convertToStudent(BuildContext context, EnquiryModel enquiry) {
+  Navigator.of(context).pushNamed(
+    AppRoutes.addStudent,
+    arguments: StudentPrefillModel(
+      fullName: enquiry.fullName,
+      mobileNumber: enquiry.mobileNumber,
+      course: enquiry.interestedCourse,
+      notes: enquiry.message,
+      sourceEnquiryId: enquiry.id,
+    ),
+  );
 }
 
 Future<void> _updateStatus(
