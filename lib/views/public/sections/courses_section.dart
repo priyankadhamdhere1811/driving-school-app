@@ -6,7 +6,9 @@ import '../../../widgets/section_heading.dart';
 import '../../../widgets/section_shell.dart';
 
 class CoursesSection extends StatelessWidget {
-  const CoursesSection({super.key});
+  final ValueChanged<String> onEnquireTap;
+
+  const CoursesSection({super.key, required this.onEnquireTap});
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +72,7 @@ class CoursesSection extends StatelessWidget {
                         description: course.description,
                         duration: course.duration,
                         price: course.price,
-                        onEnquire: () {},
+                        onEnquire: () => onEnquireTap(course.title),
                       );
                     }).toList(),
               );

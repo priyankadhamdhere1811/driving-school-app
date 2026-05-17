@@ -19,7 +19,7 @@ class _HomeViewState extends State<HomeView> {
   final _scrollController = ScrollController();
   final _coursesKey = GlobalKey();
   final _reviewsKey = GlobalKey();
-  final _contactKey = GlobalKey();
+  final _contactKey = GlobalKey<ContactSectionState>();
 
   @override
   void dispose() {
@@ -40,14 +40,22 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
+  void _scrollToContact({String? course}) {
+    if (course != null) {
+      _contactKey.currentState?.selectCourse(course);
+    }
+
+    _scrollTo(_contactKey);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: NavbarSection(
         onCoursesTap: () => _scrollTo(_coursesKey),
         onReviewsTap: () => _scrollTo(_reviewsKey),
-        onContactTap: () => _scrollTo(_contactKey),
-        onCallTap: () {},
+        onContactTap: _scrollToContact,
+        onCallTap: _scrollToContact,
       ),
       body: Stack(
         children: [
@@ -56,23 +64,29 @@ class _HomeViewState extends State<HomeView> {
             child: Column(
               children: [
                 HeroSection(
-                  onCallTap: () {},
-                  onWhatsAppTap: () {},
+                  onCallTap: _scrollToContact,
+                  onWhatsAppTap: _scrollToContact,
                   onCoursesTap: () => _scrollTo(_coursesKey),
                 ),
-                WhyChooseUsSection(onContactTap: () => _scrollTo(_contactKey)),
-                CoursesSection(key: _coursesKey),
+                WhyChooseUsSection(onContactTap: _scrollToContact),
+                CoursesSection(
+                  key: _coursesKey,
+                  onEnquireTap: (course) => _scrollToContact(course: course),
+                ),
                 ReviewsSection(key: _reviewsKey),
                 ContactSection(key: _contactKey),
                 FooterSection(
                   onCoursesTap: () => _scrollTo(_coursesKey),
                   onReviewsTap: () => _scrollTo(_reviewsKey),
-                  onContactTap: () => _scrollTo(_contactKey),
+                  onContactTap: _scrollToContact,
                 ),
               ],
             ),
           ),
-          const FloatingCtaButtons(),
+          FloatingCtaButtons(
+            onCallTap: _scrollToContact,
+            onWhatsAppTap: _scrollToContact,
+          ),
         ],
       ),
     );

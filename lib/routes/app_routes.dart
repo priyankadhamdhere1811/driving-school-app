@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../views/owner/attendance/attendance_view.dart';
+import '../views/owner/enquiries/owner_enquiries_view.dart';
 import '../views/owner/layout/owner_layout.dart';
 import '../views/owner/owner_dashboard_view.dart';
 import '../views/owner/payments/payments_view.dart';
@@ -46,7 +47,7 @@ class AppRoutes {
       enquiries:
           (context) => const OwnerLayout(
             title: 'Enquiries',
-            child: _OwnerPlaceholder(title: 'Enquiries'),
+            child: OwnerEnquiriesView(),
           ),
       reviews:
           (context) => const OwnerLayout(

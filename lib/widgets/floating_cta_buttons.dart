@@ -3,7 +3,14 @@ import 'package:flutter/material.dart';
 import '../utils/app_colors.dart';
 
 class FloatingCtaButtons extends StatelessWidget {
-  const FloatingCtaButtons({super.key});
+  final VoidCallback onCallTap;
+  final VoidCallback onWhatsAppTap;
+
+  const FloatingCtaButtons({
+    super.key,
+    required this.onCallTap,
+    required this.onWhatsAppTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,14 +25,14 @@ class FloatingCtaButtons extends StatelessWidget {
               label: 'WhatsApp',
               icon: Icons.chat_bubble_outline,
               color: AppColors.ctaGreen,
-              onPressed: () {},
+              onPressed: onWhatsAppTap,
             ),
             const SizedBox(height: 12),
             _FloatingButton(
               label: 'Call',
               icon: Icons.call,
               color: AppColors.primary,
-              onPressed: () {},
+              onPressed: onCallTap,
             ),
           ],
         ),

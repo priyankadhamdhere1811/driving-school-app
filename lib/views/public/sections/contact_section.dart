@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../../../models/enquiry_model.dart';
+import '../../../providers/enquiry_provider.dart';
 import '../../../utils/app_colors.dart';
 import '../../../utils/app_constants.dart';
 import '../../../utils/app_spacing.dart';
@@ -9,31 +12,64 @@ class ContactSection extends StatefulWidget {
   const ContactSection({super.key});
 
   @override
-  State<ContactSection> createState() => _ContactSectionState();
+  ContactSectionState createState() => ContactSectionState();
 }
 
-class _ContactSectionState extends State<ContactSection> {
+class ContactSectionState extends State<ContactSection> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _mobileController = TextEditingController();
+  final _messageController = TextEditingController();
+  String _interestedCourse = 'Beginner Driving Course';
 
   @override
   void dispose() {
     _nameController.dispose();
     _mobileController.dispose();
+    _messageController.dispose();
     super.dispose();
   }
 
-  void _submit() {
+  void selectCourse(String course) {
+    setState(() => _interestedCourse = course);
+  }
+
+  Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Thanks! We will call you shortly.')),
+    final enquiry = EnquiryModel(
+      id: '',
+      fullName: _nameController.text.trim(),
+      mobileNumber: _mobileController.text.trim(),
+      interestedCourse: _interestedCourse,
+      message: _messageController.text.trim(),
+      status: 'New',
+      createdAt: null,
     );
-    _nameController.clear();
-    _mobileController.clear();
+    final provider = context.read<EnquiryProvider>();
+    final success = await provider.createEnquiry(enquiry);
+
+    if (!mounted) {
+      return;
+    }
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Thanks! We will call you shortly.')),
+      );
+      _nameController.clear();
+      _mobileController.clear();
+      _messageController.clear();
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(provider.errorMessage ?? 'Unable to submit enquiry.'),
+      ),
+    );
   }
 
   @override
@@ -57,6 +93,13 @@ class _ContactSectionState extends State<ContactSection> {
                 formKey: _formKey,
                 nameController: _nameController,
                 mobileController: _mobileController,
+                messageController: _messageController,
+                interestedCourse: _interestedCourse,
+                onCourseChanged: (value) {
+                  if (value != null) {
+                    setState(() => _interestedCourse = value);
+                  }
+                },
                 onSubmit: _submit,
               );
               final info = const _ContactInfo();
@@ -92,17 +135,25 @@ class _CallbackForm extends StatelessWidget {
   final GlobalKey<FormState> formKey;
   final TextEditingController nameController;
   final TextEditingController mobileController;
-  final VoidCallback onSubmit;
+  final TextEditingController messageController;
+  final String interestedCourse;
+  final ValueChanged<String?> onCourseChanged;
+  final Future<void> Function() onSubmit;
 
   const _CallbackForm({
     required this.formKey,
     required this.nameController,
     required this.mobileController,
+    required this.messageController,
+    required this.interestedCourse,
+    required this.onCourseChanged,
     required this.onSubmit,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = context.watch<EnquiryProvider>().isLoading;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.card),
       decoration: BoxDecoration(
@@ -155,13 +206,53 @@ class _CallbackForm extends StatelessWidget {
               ),
               validator: Validators.mobileNumber,
             ),
+            const SizedBox(height: AppSpacing.lg),
+            DropdownButtonFormField<String>(
+              value: interestedCourse,
+              isExpanded: true,
+              decoration: const InputDecoration(
+                labelText: 'Interested Course',
+                prefixIcon: Icon(Icons.directions_car_outlined),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Beginner Driving Course',
+                  child: Text('Beginner Driving Course'),
+                ),
+                DropdownMenuItem(
+                  value: 'Advanced Confidence Course',
+                  child: Text('Advanced Confidence Course'),
+                ),
+                DropdownMenuItem(
+                  value: 'Licence Assistance Course',
+                  child: Text('Licence Assistance Course'),
+                ),
+              ],
+              onChanged: onCourseChanged,
+            ),
+            const SizedBox(height: AppSpacing.lg),
+            TextFormField(
+              controller: messageController,
+              maxLines: 3,
+              decoration: const InputDecoration(
+                labelText: 'Message',
+                prefixIcon: Icon(Icons.notes_outlined),
+              ),
+            ),
             const SizedBox(height: AppSpacing.sectionX),
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: onSubmit,
-                icon: const Icon(Icons.phone_callback),
-                label: const Text('Submit'),
+                onPressed: isLoading ? null : onSubmit,
+                icon:
+                    isLoading
+                        ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                        : const Icon(Icons.phone_callback),
+                label: Text(isLoading ? 'Submitting...' : 'Submit'),
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.ctaGreen,
                   foregroundColor: Colors.white,
