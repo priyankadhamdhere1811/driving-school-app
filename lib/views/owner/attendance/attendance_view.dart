@@ -154,6 +154,12 @@ class _AttendanceViewState extends State<AttendanceView> {
     if (student.id.isEmpty) {
       return;
     }
+    if (student.markedToday) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Attendance already marked for today.')),
+      );
+      return;
+    }
 
     final provider = context.read<AttendanceProvider>();
     final success = await provider.generateOtp(student.id);
@@ -175,6 +181,12 @@ class _AttendanceViewState extends State<AttendanceView> {
 
   Future<void> _showVerifyOtpDialog(_AttendanceStudent student) async {
     if (student.id.isEmpty) {
+      return;
+    }
+    if (student.markedToday) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Attendance already marked for today.')),
+      );
       return;
     }
 
@@ -765,6 +777,11 @@ class _AttendanceActionButtons extends StatelessWidget {
   Widget build(BuildContext context) {
     final isGenerating = loadingStudentId == student.id;
     final isVerifying = verifyingStudentId == student.id;
+    final isMarkedToday = student.markedToday;
+
+    if (isMarkedToday) {
+      return const _MarkedTodayBadge();
+    }
 
     final canGenerate = actionsEnabled && !isGenerating;
     final canVerify = actionsEnabled && !isVerifying;
@@ -823,6 +840,33 @@ class _AttendanceActionButtons extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+}
+
+class _MarkedTodayBadge extends StatelessWidget {
+  const _MarkedTodayBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.ctaGreen.withValues(alpha: 0.1),
+        borderRadius: AppSpacing.radiusMd,
+        border: Border.all(color: AppColors.ctaGreen.withValues(alpha: 0.2)),
+      ),
+      child: const Text(
+        'Marked Today',
+        style: TextStyle(
+          color: AppColors.ctaGreen,
+          fontSize: 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -1353,6 +1397,7 @@ class _AttendanceStudent {
   final String status;
   final String attendancePercent;
   final String lastAttended;
+  final bool markedToday;
 
   const _AttendanceStudent({
     required this.id,
@@ -1363,6 +1408,7 @@ class _AttendanceStudent {
     required this.status,
     required this.attendancePercent,
     required this.lastAttended,
+    required this.markedToday,
   });
 
   factory _AttendanceStudent.fromStudent(
@@ -1385,6 +1431,7 @@ class _AttendanceStudent {
       lastAttended: _formatDate(
         attendanceProvider.lastAttendedDate(student.id),
       ),
+      markedToday: isPresent,
     );
   }
 }

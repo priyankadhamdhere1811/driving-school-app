@@ -57,7 +57,7 @@ class AttendanceProvider extends ChangeNotifier {
       _generatedOtpStudentId = studentId;
       return true;
     } catch (error) {
-      _errorMessage = 'Unable to generate OTP: $error';
+      _errorMessage = error.toString().replaceFirst('Exception: ', '');
       return false;
     } finally {
       _loadingStudentId = null;

@@ -25,6 +25,10 @@ class AttendanceService {
   }
 
   Future<String> generateOtp(String studentId) async {
+    if (await _hasAttendanceForToday(studentId)) {
+      throw Exception('Attendance already marked for today.');
+    }
+
     final otp = (_random.nextInt(900000) + 100000).toString();
     final expiresAt = DateTime.now().add(const Duration(minutes: 5));
     final verification = OtpVerificationModel(
@@ -46,6 +50,10 @@ class AttendanceService {
     String studentId,
     String otp,
   ) async {
+    if (await _hasAttendanceForToday(studentId)) {
+      throw Exception('Attendance already marked for today.');
+    }
+
     final response =
         await _client
             .from('otp_verifications')
@@ -95,6 +103,23 @@ class AttendanceService {
     return AttendanceModel.fromMap(
       Map<String, dynamic>.from(attendanceResponse),
     );
+  }
+
+  Future<bool> _hasAttendanceForToday(String studentId) async {
+    final today = DateTime.now();
+    final todayText =
+        '${today.year.toString().padLeft(4, '0')}-'
+        '${today.month.toString().padLeft(2, '0')}-'
+        '${today.day.toString().padLeft(2, '0')}';
+    final response =
+        await _client
+            .from('attendance_records')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('attendance_date', todayText)
+            .maybeSingle();
+
+    return response != null;
   }
 
   Future<List<AttendanceModel>> fetchAttendanceByStudentId(
