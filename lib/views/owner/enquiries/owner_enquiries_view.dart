@@ -8,6 +8,8 @@ import '../../../utils/app_spacing.dart';
 import '../../../utils/app_text_styles.dart';
 import '../../../widgets/owner/owner_status_badge.dart';
 
+const _enquiryStatuses = ['New', 'Contacted', 'Converted'];
+
 class OwnerEnquiriesView extends StatefulWidget {
   const OwnerEnquiriesView({super.key});
 
@@ -146,7 +148,7 @@ class _EnquiriesTable extends StatelessWidget {
                             ),
                           ),
                         ),
-                        DataCell(OwnerStatusBadge(status: enquiry.status)),
+                        DataCell(_StatusActions(enquiry: enquiry)),
                         DataCell(Text(_formatDate(enquiry.createdAt))),
                       ],
                     ),
@@ -203,7 +205,7 @@ class _EnquiryCard extends StatelessWidget {
                 _valueOrDash(enquiry.fullName),
                 style: AppTextStyles.ownerCardTitle,
               ),
-              OwnerStatusBadge(status: enquiry.status),
+              _StatusActions(enquiry: enquiry),
             ],
           ),
           const SizedBox(height: AppSpacing.md),
@@ -258,6 +260,64 @@ class _MessageState extends StatelessWidget {
       ),
     );
   }
+}
+
+class _StatusActions extends StatelessWidget {
+  final EnquiryModel enquiry;
+
+  const _StatusActions({required this.enquiry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        OwnerStatusBadge(status: enquiry.status),
+        const SizedBox(width: AppSpacing.xs),
+        PopupMenuButton<String>(
+          tooltip: 'Change status',
+          initialValue:
+              _enquiryStatuses.contains(enquiry.status) ? enquiry.status : null,
+          icon: const Icon(Icons.more_vert, color: AppColors.textGray),
+          onSelected: (status) => _updateStatus(context, enquiry, status),
+          itemBuilder:
+              (context) =>
+                  _enquiryStatuses
+                      .map(
+                        (status) => PopupMenuItem<String>(
+                          value: status,
+                          child: Text(status),
+                        ),
+                      )
+                      .toList(),
+        ),
+      ],
+    );
+  }
+}
+
+Future<void> _updateStatus(
+  BuildContext context,
+  EnquiryModel enquiry,
+  String status,
+) async {
+  final provider = context.read<EnquiryProvider>();
+  final updated = await provider.updateEnquiryStatus(enquiry.id, status);
+
+  if (!context.mounted) {
+    return;
+  }
+
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(
+        updated
+            ? 'Enquiry status updated successfully.'
+            : provider.errorMessage ??
+                'Unable to update enquiry status. Please try again.',
+      ),
+    ),
+  );
 }
 
 class _InfoLine extends StatelessWidget {

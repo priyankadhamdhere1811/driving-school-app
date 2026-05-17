@@ -29,4 +29,19 @@ class EnquiryService {
 
     return EnquiryModel.fromMap(Map<String, dynamic>.from(response));
   }
+
+  Future<EnquiryModel> updateEnquiryStatus({
+    required String enquiryId,
+    required String status,
+  }) async {
+    final response =
+        await _client
+            .from('enquiries')
+            .update({'status': status})
+            .eq('id', enquiryId)
+            .select()
+            .single();
+
+    return EnquiryModel.fromMap(Map<String, dynamic>.from(response));
+  }
 }

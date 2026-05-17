@@ -57,6 +57,39 @@ class EnquiryProvider extends ChangeNotifier {
     }
   }
 
+  Future<bool> updateEnquiryStatus(String enquiryId, String status) async {
+    final index = _enquiries.indexWhere((enquiry) => enquiry.id == enquiryId);
+    if (index == -1) {
+      _errorMessage = 'Unable to update enquiry status. Please try again.';
+      notifyListeners();
+      return false;
+    }
+
+    final previousEnquiry = _enquiries[index];
+    if (previousEnquiry.status == status) {
+      return true;
+    }
+
+    _errorMessage = null;
+    _enquiries[index] = previousEnquiry.copyWith(status: status);
+    notifyListeners();
+
+    try {
+      final updatedEnquiry = await _enquiryService.updateEnquiryStatus(
+        enquiryId: enquiryId,
+        status: status,
+      );
+      _enquiries[index] = updatedEnquiry;
+      return true;
+    } catch (error) {
+      _enquiries[index] = previousEnquiry;
+      _errorMessage = 'Unable to update enquiry status. Please try again.';
+      return false;
+    } finally {
+      notifyListeners();
+    }
+  }
+
   void addEnquiry() {
     notifyListeners();
   }

@@ -17,6 +17,26 @@ class EnquiryModel {
     required this.createdAt,
   });
 
+  EnquiryModel copyWith({
+    String? id,
+    String? fullName,
+    String? mobileNumber,
+    String? interestedCourse,
+    String? message,
+    String? status,
+    DateTime? createdAt,
+  }) {
+    return EnquiryModel(
+      id: id ?? this.id,
+      fullName: fullName ?? this.fullName,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      interestedCourse: interestedCourse ?? this.interestedCourse,
+      message: message ?? this.message,
+      status: status ?? this.status,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
   factory EnquiryModel.fromMap(Map<String, dynamic> map) {
     return EnquiryModel(
       id: _readString(map, ['id']),

@@ -30,6 +30,9 @@ class OwnerStatusBadge extends StatelessWidget {
 
   Color _statusColor(String status) {
     return switch (status) {
+      'New' => AppColors.darkRed,
+      'Contacted' => AppColors.accent,
+      'Converted' => AppColors.ctaGreen,
       'Completed' || 'Paid' => AppColors.ctaGreen,
       'Pending Payment' || 'Pending' => AppColors.accent,
       'Overdue' => AppColors.darkRed,
